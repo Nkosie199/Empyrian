@@ -10,7 +10,7 @@ Empyrian uses the [OpenID Connect Generic Client](https://wordpress.org/plugins/
 
 1. User clicks **"Sign in with Mynger"** on the Empyrian login page.
 2. WordPress redirects to `https://api.mynger.com/oauth/authorize` with a `state` nonce.
-3. If the user has an active Mynger SSO session (`mynger_sso` cookie) they see a consent screen; otherwise they log in with email + password.
+3. If the user has an active Mynger SSO session (`mynger_sso` cookie) they see a consent screen; otherwise they log in with username/email + password.
 4. Mynger redirects back to WordPress with an authorization code.
 5. WordPress exchanges the code for tokens at `/oauth/token`.
 6. WordPress fetches user claims from `/oauth/userinfo`.
@@ -47,15 +47,101 @@ Navigate to **Settings → OpenID Connect Client** in WP admin (`/wp-admin/optio
 | End Session Endpoint | `https://api.mynger.com/api/auth/logout` | |
 | JWKS Endpoint | `https://api.mynger.com/oauth/jwks` | |
 | Issuer | `https://mynger.com` | Must match JWT `iss` claim |
-| Identity Key | `email` | Which userinfo claim is used as the stable user identity |
-| Identify with Username | **unchecked** | Links existing WP accounts by email, not by login name |
-| Link Existing Users | **checked** | Matches Mynger users to existing WP accounts by email |
+| Identity Key | `preferred_username` | Which userinfo claim is used as the stable user identity |
+| Identify with Username | **checked** | Links existing WP accounts by login name |
+| Link Existing Users | **checked** | Matches Mynger users to existing WP accounts |
 | Create if does not exist | **checked** | Creates a new WP account for first-time Mynger users |
 | Redirect user back | **checked** | Returns user to the page they came from after login |
 | Email Format | `{email}` | |
 | Display Name Format | `{username}` | |
 | Nickname Key | `username` | |
 | State Time Limit | `600` | Seconds; increased from default 180 to handle slow connections |
+
+### How user linking works (2026-06-22 update)
+
+With `identity_key = preferred_username` and `identify_with_username = true`:
+
+1. Plugin gets `preferred_username` claim from Mynger userinfo (= Mynger account username)
+2. Looks up WP user with `openid-connect-generic-subject-identity` user meta = that value
+3. If not found: falls back to `get_user_by('login', preferred_username)`
+4. On match: stores subject meta for fast lookup on future logins
+
+This is consistent with how bonakude is configured and avoids the email-mismatch issues documented under "Key bugs fixed" below.
+
+---
+
+## Claude admin user
+
+| Field | Value |
+|---|---|
+| WP user ID | 638 |
+| WP login | `claude` |
+| WP email | `claude.superai@gmail.com` |
+| Mynger account email | `claude.superai+bonakude@gmail.com` |
+| Mynger username | `claude` |
+| WP subject meta | set automatically on first SSO login |
+
+The Mynger `claude` account (same account used for bonakude) links to the empyrian WP user by username match. One Mynger account, two linked WP sites.
+
+---
+
+## Normal user auth flows
+
+Empyrian uses the same `play-block` plugin REST endpoint as bonakude for all normal-user auth actions.
+
+### Registration
+
+```
+POST /wp-json/play/auth
+form-action: register
+user_login:  <username>
+user_email:  <email>
+```
+
+No email activation required — user can log in immediately after registration.
+
+### Login
+
+```
+POST /wp-json/play/auth
+form-action: login
+log:         <username or email>
+pwd:         <password>
+nonce:       <nonce from /login/ page>
+```
+
+### Forgot Password (lostpwd)
+
+```
+POST /wp-json/play/auth
+form-action: lostpwd
+user_login:  <username or email>
+nonce:       <nonce from /login/ page>
+```
+
+### Reset Password (resetpwd)
+
+```
+POST /wp-json/play/auth
+form-action: resetpwd
+rp_key:      <key from reset email>
+rp_login:    <username>
+pwd:         <new password>
+nonce:       <nonce from /login/ page>
+```
+
+### E2E test results (2026-06-22)
+
+| Flow | Result |
+|---|---|
+| SSO: `/login/` → Mynger → `/user/claude/` | ✓ |
+| Register new user | ✓ |
+| Login with correct credentials | ✓ |
+| Login with wrong credentials (rejected) | ✓ |
+| lostpwd → success email | ✓ |
+| Password change → new password accepted, old rejected | ✓ |
+| Duplicate username rejected at registration | ✓ |
+| resetpwd with invalid key rejected | ✓ |
 
 ---
 
@@ -87,12 +173,9 @@ Navigate to **Settings → OpenID Connect Client** in WP admin (`/wp-admin/optio
 
 **Root cause (first occurrence):** `identity_key` was set to `username`. WordPress tried to create a new WP user with `user_login = "claude"` (the Mynger username), but a WP account with that login already existed.
 
-**Root cause (second occurrence, main fix):** `identify_with_username` was **checked**, so `link_existing_users` tried to find an existing WP account via `get_user_by('login', subject_identity)`. When `identity_key = email`, this looked up users by their email address as a login name — a query that always returns nothing, since WP login names are not email addresses. With no match, WordPress fell through to `wp_insert_user`, which failed because the email was already registered.
+**Root cause (second occurrence):** `identify_with_username` was **checked** while `identity_key = email`. The plugin called `get_user_by('login', email_address)` — email addresses are never stored as WP login names, so this always returned nothing. WordPress then tried `wp_insert_user`, which failed because the email was already registered.
 
-**Fix:** 
-- Set `identity_key = email` — the user's Mynger email becomes the stable identity.
-- **Uncheck** `identify_with_username` — the plugin now links existing WP accounts via `get_user_by('email', ...)` instead of by login name.
-- This means: on first SSO login, if a WP account already exists with the same email as the Mynger account, they are automatically linked. New users get a fresh WP account with their email as the login.
+**Fix (2026-06-22):** Switched to `identity_key = preferred_username` with `identify_with_username = true`. The plugin now correctly calls `get_user_by('login', mynger_username)`, which finds existing WP accounts by their login name. This matches bonakude's approach.
 
 ---
 
