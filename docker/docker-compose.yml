@@ -1,0 +1,60 @@
+# Empyrian – local development / migration docker-compose
+# Usage:
+#   cp .env.example .env
+#   docker-compose up -d
+#   # then import DB: see docs/DOCKER.md
+
+services:
+
+  db:
+    image: mariadb:11.4
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MARIADB_DATABASE: ${DB_NAME}
+      MARIADB_USER: ${DB_USER}
+      MARIADB_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./config/mysql/memory.cnf:/etc/mysql/conf.d/memory.cnf:ro
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  wordpress:
+    image: wordpress:6.7-php8.2-apache
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      WORDPRESS_DB_HOST: db:3306
+      WORDPRESS_DB_NAME: ${DB_NAME}
+      WORDPRESS_DB_USER: ${DB_USER}
+      WORDPRESS_DB_PASSWORD: ${DB_PASSWORD}
+      WORDPRESS_TABLE_PREFIX: wp_
+      WORDPRESS_CONFIG_EXTRA: |
+        define('DISABLE_WP_CRON', true);
+        define('FS_METHOD', 'direct');
+        define('WP_HOME', 'https://${SITE_DOMAIN}');
+        define('WP_SITEURL', 'https://${SITE_DOMAIN}');
+    volumes:
+      - wp_content:/var/www/html/wp-content
+      - ./config/apache/000-default.conf:/etc/apache2/sites-available/000-default.conf:ro
+      - ./config/php/uploads.ini:/usr/local/etc/php/conf.d/uploads.ini:ro
+    ports:
+      - "8081:80"
+
+  cron:
+    image: alpine:3.19
+    restart: unless-stopped
+    depends_on:
+      - wordpress
+    entrypoint: >
+      sh -c "echo '*/5 * * * * wget -q -O- https://${SITE_DOMAIN}/wp-cron.php?doing_wp_cron > /dev/null 2>&1' | crontab - && crond -f -l 8"
+
+volumes:
+  db_data:
+  wp_content:
