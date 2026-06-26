@@ -14,11 +14,6 @@ define('MYNGER_S3_BASE',  'https://myngerbucket14bd7-main.s3.eu-west-1.amazonaws
 // 1. REST ENDPOINTS
 // ---------------------------------------------------------------------------
 add_action('rest_api_init', function () {
-    register_rest_route('mynger/v1', '/token', [
-        'methods'             => 'GET',
-        'callback'            => 'mynger_rest_get_token',
-        'permission_callback' => 'is_user_logged_in',
-    ]);
     register_rest_route('mynger/v1', '/presign', [
         'methods'             => 'POST',
         'callback'            => 'mynger_rest_presign',
@@ -34,12 +29,6 @@ function mynger_get_user_data(int $wp_uid): ?array {
     $access_token = is_array($tok) ? ($tok['access_token'] ?? '') : '';
     if (!$access_token) return null;
     return ['userId' => $subject, 'token' => $access_token];
-}
-
-function mynger_rest_get_token(WP_REST_Request $req): WP_REST_Response {
-    $d = mynger_get_user_data(get_current_user_id());
-    if (!$d) return new WP_REST_Response(['error' => 'No Mynger SSO session. Please log in via Mynger.'], 403);
-    return new WP_REST_Response($d, 200);
 }
 
 function mynger_rest_presign(WP_REST_Request $req): WP_REST_Response {
@@ -93,8 +82,14 @@ function mynger_redirect_to_s3(int $att_id): void {
         return;
     }
 
-    $filename = basename($local);
-    $s3_url   = mynger_s3_upload($local, $filename, $mime, $d);
+    $filename  = basename($local);
+    $file_size = filesize($local);
+    if ($file_size === false || $file_size > 20 * 1024 * 1024) {
+        error_log('Mynger Integration (Empyrian): skipping server-side S3 upload for ' . $filename . ' — file exceeds 20 MB limit (' . $file_size . ' bytes). Upload via the upload page instead.');
+        return;
+    }
+
+    $s3_url = mynger_s3_upload($local, $filename, $mime, $d);
     if (!$s3_url) { error_log('Mynger Integration (Empyrian): S3 upload failed for ' . $filename); return; }
 
     update_attached_file($att_id, $s3_url);
@@ -122,7 +117,7 @@ function mynger_s3_upload(string $local_path, string $file_name, string $mime, a
         'method'  => 'PUT',
         'headers' => ['Content-Type' => $mime, 'Content-Length' => strlen($contents)],
         'body'    => $contents,
-        'timeout' => 300,
+        'timeout' => 60,
     ]);
     if (is_wp_error($pr)) return null;
     $code = wp_remote_retrieve_response_code($pr);
