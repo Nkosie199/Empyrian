@@ -2,7 +2,8 @@
  * mynger-upload.js
  * Intercepts the play-block upload form file inputs and routes video/audio
  * files directly to Mynger S3 via a presigned URL, showing a progress bar.
- * Falls back to the normal WordPress upload flow for non-media files.
+ * Also injects a mandatory cover art picker; uploads image to WP media library
+ * and injects the resulting attachment ID as featured_media before form submit.
  */
 (function ($) {
     'use strict';
@@ -14,10 +15,115 @@
     const MEDIA_TYPES = [...VIDEO_TYPES, ...AUDIO_TYPES];
 
     // -----------------------------------------------------------------------
-    // Wait for the play-block upload form to appear, then hook file inputs
+    // Observe DOM for upload forms and inject cover art picker when found
+    // -----------------------------------------------------------------------
+    function observeForms() {
+        function tryInject(root) {
+            $(root).find('input[type="file"][name="stream"], input[type="file"][name="file"], input[type="file"][accept*="audio"], input[type="file"][accept*="video"]').each(function () {
+                injectCoverArtPicker($(this).closest('form'));
+            });
+        }
+
+        tryInject(document);
+
+        const observer = new MutationObserver(function (mutations) {
+            mutations.forEach(function (m) {
+                m.addedNodes.forEach(function (node) {
+                    if (node.nodeType === 1) tryInject(node);
+                });
+            });
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+    }
+
+    // -----------------------------------------------------------------------
+    // Inject a cover art picker section into an upload form (once only)
+    // -----------------------------------------------------------------------
+    function injectCoverArtPicker($form) {
+        if (!$form.length || $form.find('.mynger-cover-wrap').length) return;
+
+        const $wrap = $(`
+            <div class="mynger-cover-wrap" style="margin:16px 0;">
+                <label class="mynger-cover-label" style="display:block;margin-bottom:6px;font-size:13px;color:#ccc;">
+                    Cover Art <span style="color:#ff4444;">*</span>
+                </label>
+                <div class="mynger-cover-inner" style="display:flex;align-items:center;gap:12px;">
+                    <div class="mynger-cover-thumb" style="width:64px;height:64px;border:1px dashed #444;border-radius:4px;overflow:hidden;background:#1a1a1a;flex-shrink:0;display:flex;align-items:center;justify-content:center;">
+                        <span class="mynger-cover-placeholder" style="font-size:22px;color:#444;">&#128247;</span>
+                    </div>
+                    <div style="flex:1;">
+                        <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" class="mynger-cover-input" style="font-size:13px;color:#ccc;">
+                        <div class="mynger-cover-status" style="font-size:12px;color:#888;margin-top:4px;"></div>
+                    </div>
+                </div>
+                <input type="hidden" name="featured_media" class="mynger-cover-id" value="">
+            </div>
+        `);
+
+        // Append after the last file input inside the form, or before submit
+        const $fileInput = $form.find('input[type="file"]').last();
+        if ($fileInput.length) {
+            $fileInput.closest('.form-group, .field-wrap, p, div').last().after($wrap);
+        } else {
+            $form.find('[type="submit"]').first().before($wrap);
+        }
+
+        $form.find('.mynger-cover-input').on('change', function () {
+            const file = this.files && this.files[0];
+            if (!file) return;
+            uploadCoverArt(file, $form);
+        });
+    }
+
+    // -----------------------------------------------------------------------
+    // Upload cover art to WP media library, inject ID into hidden field
+    // -----------------------------------------------------------------------
+    function uploadCoverArt(file, $form) {
+        const $status = $form.find('.mynger-cover-status');
+        const $thumb  = $form.find('.mynger-cover-thumb');
+        const $idField = $form.find('.mynger-cover-id');
+
+        $status.text('Uploading cover art…').css('color', '#888');
+        $idField.val('');
+
+        // Show local preview immediately
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            $thumb.html('<img src="' + escHtml(e.target.result) + '" style="width:100%;height:100%;object-fit:cover;">');
+        };
+        reader.readAsDataURL(file);
+
+        // Upload to WP media library via REST API
+        const formData = new FormData();
+        formData.append('file', file, file.name);
+        formData.append('title', file.name.replace(/\.[^.]+$/, ''));
+
+        $.ajax({
+            url: (window.wpApiSettings && wpApiSettings.root ? wpApiSettings.root : '/wp-json/') + 'wp/v2/media',
+            method: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            beforeSend: function (xhr) {
+                xhr.setRequestHeader('X-WP-Nonce', myngerConfig.nonce);
+            },
+        })
+        .then(function (resp) {
+            if (!resp || !resp.id) throw new Error('No media ID returned');
+            $idField.val(resp.id);
+            $status.text('Cover art ready ✓').css('color', '#1ed760');
+        })
+        .catch(function (err) {
+            $status.text('Cover art upload failed — ' + (err.responseJSON && err.responseJSON.message ? err.responseJSON.message : 'check console')).css('color', '#ff4444');
+            $thumb.html('<span class="mynger-cover-placeholder" style="font-size:22px;color:#ff4444;">&#10007;</span>');
+            console.error('Mynger cover art upload error:', err);
+        });
+    }
+
+    // -----------------------------------------------------------------------
+    // Hook audio/video file inputs → direct S3 upload
     // -----------------------------------------------------------------------
     function hookUploadInputs() {
-        // Target both direct file inputs and dynamically rendered upload forms
         $(document).on('change', 'input[type="file"][name="stream"], input[type="file"][name="file"], input[type="file"][accept*="video"], input[type="file"][accept*="audio"]', function (e) {
             const file = this.files && this.files[0];
             if (!file) return;
@@ -25,7 +131,6 @@
             const isMedia = MEDIA_TYPES.some(t => file.type === t || file.type.startsWith(t.split('/')[0] + '/'));
             if (!isMedia) return;
 
-            // Prevent the default form submission from also uploading this file
             e.preventDefault();
             e.stopPropagation();
 
@@ -42,7 +147,6 @@
     function uploadToMynger(file, $input, $form) {
         const $progress = createProgressUI($input, file.name);
 
-        // Step 1: get presigned URL from WP REST proxy
         $.ajax({
             url: myngerConfig.restBase + '/presign',
             method: 'POST',
@@ -58,8 +162,6 @@
         .then(s3Url => {
             $progress.status('Upload complete ✓');
             $progress.finish();
-
-            // Inject the S3 URL as the stream field value
             injectStreamUrl(s3Url, $input, $form);
         })
         .catch(err => {
@@ -75,10 +177,7 @@
             xhr.setRequestHeader('Content-Type', file.type);
 
             xhr.upload.onprogress = e => {
-                if (e.lengthComputable) {
-                    const pct = Math.round((e.loaded / e.total) * 100);
-                    $progress.pct(pct);
-                }
+                if (e.lengthComputable) $progress.pct(Math.round((e.loaded / e.total) * 100));
             };
 
             xhr.onload = () => {
@@ -91,32 +190,23 @@
     }
 
     function injectStreamUrl(s3Url, $input, $form) {
-        // Find or create a hidden input named 'stream' (what play-block expects)
         let $stream = $form.find('input[name="stream"]');
         if (!$stream.length) {
             $stream = $('<input type="hidden" name="stream">').appendTo($form);
         }
         $stream.val(s3Url);
-
-        // Clear the file input so it doesn't re-upload via normal WP flow
         $input.val('');
         $input.closest('.play-upload-file, .upload-file-wrap').addClass('mynger-uploaded');
 
-        // Show the S3 URL to the user
         const $url_display = $form.find('.stream-url-display, [data-stream-preview]');
-        if ($url_display.length) {
-            $url_display.val(s3Url).text(s3Url);
-        }
+        if ($url_display.length) $url_display.val(s3Url).text(s3Url);
 
-        // If the form has an existing stream URL text field, populate it
         $form.find('input[name="stream_url"], input[placeholder*="URL"], input[placeholder*="stream"]').val(s3Url);
-
-        // Trigger the play-block form to acknowledge the stream is set
         $form.trigger('mynger:stream-ready', [s3Url]);
     }
 
     // -----------------------------------------------------------------------
-    // Progress UI — injects a progress bar below the file input
+    // Progress UI
     // -----------------------------------------------------------------------
     function createProgressUI($input, fileName) {
         const $wrap = $(`
@@ -144,27 +234,37 @@
     }
 
     function escHtml(str) {
-        return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
 
     // -----------------------------------------------------------------------
-    // Also handle the play-block AJAX upload_stream action — if the server-
-    // side hook is not triggered (e.g. admin uploads via media library modal),
-    // show a notice that files should be uploaded via the Mynger flow.
+    // Form submit validation — block if no cover art or audio not yet uploaded
     // -----------------------------------------------------------------------
-    $(document).on('submit', '.play-upload-form', function () {
+    $(document).on('submit', '.play-upload-form', function (e) {
         const $form = $(this);
-        const $stream = $form.find('input[name="stream"]');
-        const streamVal = $stream.val() || '';
 
-        // If stream looks like a local WP upload URL, warn
+        // Block if cover art not uploaded yet
+        const coverId = $form.find('.mynger-cover-id').val();
+        if ($form.find('.mynger-cover-wrap').length && !coverId) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            $form.find('.mynger-cover-status').text('Please upload a cover art image before submitting.').css('color', '#ff4444');
+            $form.find('.mynger-cover-wrap')[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+            return false;
+        }
+
+        // Warn if stream is local WP URL
+        const streamVal = $form.find('input[name="stream"]').val() || '';
         if (streamVal && streamVal.indexOf(window.location.hostname) !== -1 && streamVal.indexOf('/wp-content/uploads/') !== -1) {
-            const sure = confirm('This video will be stored directly on the server. For best performance, upload via the Mynger file selector instead. Continue anyway?');
-            if (!sure) return false;
+            const sure = confirm('This file will be stored directly on the server. For best performance, upload via the Mynger file selector instead. Continue anyway?');
+            if (!sure) { e.preventDefault(); return false; }
         }
     });
 
     // Boot
-    $(document).ready(hookUploadInputs);
+    $(document).ready(function () {
+        hookUploadInputs();
+        observeForms();
+    });
 
 })(jQuery);
