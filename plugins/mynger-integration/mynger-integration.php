@@ -159,26 +159,7 @@ function mynger_s3_delete_on_remove(int $post_id, WP_Post $post): void {
 }
 
 // ---------------------------------------------------------------------------
-// 4. SET FEATURED IMAGE after play-block post save
-//    The upload form injects a hidden `featured_media` field containing the
-//    WP attachment ID of the cover art uploaded to the media library.
-// ---------------------------------------------------------------------------
-add_action('save_post', function (int $post_id): void {
-    if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) return;
-    if (defined('DOING_AJAX') && DOING_AJAX) return;
-    if (!isset($_POST['featured_media'])) return;
-
-    $media_id = (int) $_POST['featured_media'];
-    if ($media_id <= 0) return;
-
-    // Only act if the attachment belongs to this site
-    if (get_post_type($media_id) !== 'attachment') return;
-
-    set_post_thumbnail($post_id, $media_id);
-});
-
-// ---------------------------------------------------------------------------
-// 5. ENQUEUE CLIENT-SIDE JS
+// 4. ENQUEUE CLIENT-SIDE JS
 // ---------------------------------------------------------------------------
 add_action('wp_enqueue_scripts', function () {
     if (!is_user_logged_in()) return;
