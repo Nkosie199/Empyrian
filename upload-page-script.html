@@ -1,0 +1,164 @@
+<script>
+(function () {
+  'use strict';
+
+  var coverArtFile = null;
+
+  /* ── 1. Cover art picker UI ──────────────────────────────── */
+  function injectPicker() {
+    var form = document.getElementById('mup-form');
+    if (!form || document.getElementById('mngrCoverWrap')) return;
+
+    var wrap = document.createElement('div');
+    wrap.id = 'mngrCoverWrap';
+    wrap.style.cssText = 'margin-bottom:16px';
+    wrap.innerHTML =
+      '<label style="display:block;font-weight:600;margin-bottom:6px">' +
+        'Cover Art <span style="color:#d63638">*</span>' +
+      '</label>' +
+      '<div id="mngrCoverDrop" style="border:2px dashed #ccc;border-radius:4px;padding:20px;' +
+          'text-align:center;cursor:pointer;transition:border-color .2s">' +
+        '<span id="mngrCoverText">Click or drag to add cover art (required)</span><br>' +
+        '<img id="mngrCoverImg" style="display:none;max-height:120px;margin-top:8px;border-radius:4px">' +
+      '</div>' +
+      '<input type="file" id="mngrCoverInput" accept="image/*" style="display:none">';
+
+    form.parentNode.insertBefore(wrap, form);
+
+    var drop  = document.getElementById('mngrCoverDrop');
+    var input = document.getElementById('mngrCoverInput');
+
+    drop.addEventListener('click', function () { input.click(); });
+    drop.addEventListener('dragover', function (e) {
+      e.preventDefault();
+      drop.style.borderColor = '#0073aa';
+    });
+    drop.addEventListener('dragleave', function () {
+      drop.style.borderColor = coverArtFile ? '#46b450' : '#ccc';
+    });
+    drop.addEventListener('drop', function (e) {
+      e.preventDefault();
+      setCover(e.dataTransfer.files[0]);
+    });
+    input.addEventListener('change', function () { setCover(input.files[0]); });
+  }
+
+  function setCover(file) {
+    if (!file || !file.type.startsWith('image/')) return;
+    coverArtFile = file;
+    var img  = document.getElementById('mngrCoverImg');
+    var text = document.getElementById('mngrCoverText');
+    var drop = document.getElementById('mngrCoverDrop');
+    img.src = URL.createObjectURL(file);
+    img.style.display = 'block';
+    text.textContent = file.name;
+    drop.style.borderColor = '#46b450';
+  }
+
+  /* ── 2. Wrap window.myngerUpload ─────────────────────────── */
+  function wrapMyngerUpload() {
+    var origUpload = window.myngerUpload;
+    if (typeof origUpload !== 'function') return;
+
+    window.myngerUpload = async function () {
+      if (!coverArtFile) {
+        var drop = document.getElementById('mngrCoverDrop');
+        if (drop) drop.style.borderColor = '#d63638';
+        var res = document.getElementById('mup-result');
+        if (res) {
+          res.style.cssText = 'display:block;padding:16px;border-radius:8px;background:#ff000022;border:1px solid #d63638;color:inherit;margin-bottom:16px';
+          res.innerHTML = '<strong>Cover art is required.</strong> Please add an image before uploading.';
+        }
+        return;
+      }
+
+      // Intercept fetch to capture empyrianPostId from the /api/stations response
+      // Ensure _mupUser is set (page's own fetch omits the nonce and always gets 401)
+      if (!window._mupUser) {
+        var meResp = await fetch('/wp-json/wp/v2/users/me?_fields=slug,name', { headers: { 'X-WP-Nonce': play.nonce } });
+        var me = meResp.ok ? await meResp.json() : null;
+        if (me) window._mupUser = me;
+      }
+
+      var empyrianPostId = null;
+      var origFetch = window.fetch;
+      window.fetch = async function (url, opts) {
+        var resp = await origFetch.call(window, url, opts);
+        if (typeof url === 'string' && url.includes('/api/stations') && opts && opts.method === 'POST') {
+          try {
+            var station = await resp.clone().json();
+            if (station && station.empyrianPostId) empyrianPostId = station.empyrianPostId;
+          } catch (e) {}
+        }
+        return resp;
+      };
+
+      try {
+        await origUpload.call(this);
+      } finally {
+        window.fetch = origFetch;
+      }
+
+      if (empyrianPostId) {
+        attachCoverArt(empyrianPostId).catch(console.warn);
+      } else {
+        console.warn('[Empyrian] No empyrianPostId in station response — cover art not attached');
+      }
+    };
+  }
+
+  /* ── 3. Attach cover art to WP post ──────────────────────── */
+  async function attachCoverArt(postId) {
+    if (!coverArtFile) return;
+
+    var fd = new FormData();
+    fd.append('file', coverArtFile, coverArtFile.name);
+
+    var media = await fetch('/wp-json/wp/v2/media', {
+      method: 'POST',
+      headers: {
+        'X-WP-Nonce': play.nonce,
+        'Content-Disposition': 'attachment; filename="' + coverArtFile.name + '"'
+      },
+      body: fd
+    }).then(function (r) { return r.json(); });
+
+    if (!media.id) {
+      console.warn('[Empyrian] Cover art upload failed', media);
+      return;
+    }
+
+    await fetch('/wp-json/wp/v2/posts/' + postId, {
+      method: 'POST',
+      headers: {
+        'X-WP-Nonce': play.nonce,
+        'Content-Type': 'application/json',
+        'X-HTTP-Method-Override': 'PATCH'
+      },
+      body: JSON.stringify({ featured_media: media.id })
+    });
+
+    console.log('[Empyrian] Cover art attached: post=' + postId + ' media=' + media.id);
+  }
+
+  /* ── Init ────────────────────────────────────────────────── */
+  function init() {
+    injectPicker();
+    wrapMyngerUpload();
+    // The page's own _mupUser fetch omits X-WP-Nonce and always gets 401.
+    // Pre-populate it here so myngerUpload's login guard passes.
+  }
+
+  if (document.getElementById('mup-form')) {
+    init();
+  } else {
+    var obs = new MutationObserver(function () {
+      if (document.getElementById('mup-form')) {
+        obs.disconnect();
+        init();
+      }
+    });
+    obs.observe(document.body, { childList: true, subtree: true });
+  }
+})();
+</script>
