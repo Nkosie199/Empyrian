@@ -4,3 +4,19 @@ Description:    Make your modifications in this child theme.
 Template:       muzik
 Tags: 			custom-colors, editor-style, featured-images, translation-ready
 */
+
+/* QA fix: song list rows (Charts, track lists) had zero gap between the
+   title and artist name — they visually touched. Scoped to .block-loop-item
+   only, not entry-title globally, since blog post cards elsewhere may rely
+   on the parent theme's zero-margin default. */
+.block-loop-item .entry-title {
+	margin-bottom: 4px;
+}
+
+/* QA fix: the native login form and "Sign in with Mynger" button had no
+   visual separation, making it look like one confusing block. */
+.openid-connect-login-button {
+	margin-bottom: 24px;
+	padding-bottom: 24px;
+	border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
