@@ -23,12 +23,10 @@ Tracking: DeepDiary project **"Empyrian - CEO backlog"** (id 19).
 A second, code-side defect makes it look like a broken button: when the API returns `[]`, the player gives no feedback and keeps the previous track, so clicking KLAN4EVA loads "MARLBORO RED" paused.
 
 **Fix:**
-1. **Data (blocking):** relink the 125 existing track posts to their albums/playlists. Start with the high-confidence lead: tracks 5329–5334 ("01 Sixes" … "06 Rawkus") are the Sixes EP (4821). The rest need the catalogue owner (CEO/artists) to confirm each album's track list; a picker page in wp-admin (below) makes this a click-through, not SQL.
-2. **wp-admin relink tool** (in `plugins/mynger-integration`): lists each album/playlist with its missing track slots and a searchable picker of unlinked tracks (title, S3 artist folder, file name); saving writes the container's `post` meta.
-3. **Never show an unplayable item:** Charts, Discover and search exclude containers whose playable track count is 0 (`pre_get_posts` filter in the plugin, using a cached `_empyrian_playable_count` meta refreshed on save and nightly).
-4. **Player feedback:** if a play request returns no tracks, show "This release has no playable tracks yet" and leave the player's current state unchanged (no silent switch).
-5. **Guard:** saving an album/playlist with a missing or deleted track id fails with an admin notice.
-6. **Nightly audit:** reuse mynger-backend's station WP audit endpoint (task 117) to report any container with 0 playable tracks to the Empyrian CEO backlog.
+1. **Data (blocking, needs the catalogue owner):** relink the 125 existing track posts to their albums/playlists. Start with the high-confidence lead: tracks 5329–5334 ("01 Sixes" … "06 Rawkus") are the Sixes EP (4821). The rest need each album's track list confirmed.
+2. **wp-admin relink tool:** lists each album/playlist with its missing track slots and a searchable picker of unlinked tracks (title, S3 artist folder, file name); saving writes the container's `post` meta.
+3. **Hide unplayable releases (code ready, not deployed):** `wp-theme-additions/playable-releases.php` on this branch marks every post whose Play Block API returns no tracks (`_empyrian_unplayable`), keeps them out of Charts, Discover and search, shows "This release has no playable tracks yet" on the release page, and re-checks daily and on save. **Deploy:** append it to the live theme's `functions.php` (Appearance → Theme File Editor → Muzik → functions.php, after the "Mynger station sync" line), open any wp-admin page once to run the first check, then purge LiteSpeed Cache.
+4. **Guard:** saving an album/playlist with a missing or deleted track id fails with an admin notice.
 
 **Acceptance:** every Play button on `/charts/` starts the expected track (scripted check clicking each one, verifying `audio.currentSrc` changes to that release's first track and `paused == false`); the audit reports 0 empty containers.
 
@@ -49,12 +47,16 @@ The same data feeds Hub Cards (`GET /wp-json/empyrian/v1/hub/cards`, H-2 shape) 
 
 **Acceptance:** a signed-out visitor sees Radio, Charts and New releases with no empty sections; a signed-in user sees Continue listening after playing one track; every Play on the page works (E-1 check).
 
-## 3. Mobile
+## 3. Navigation (done live, 26 Sep)
+
+Mobile menu: the "Playlist" slot is now a centre **Upload** button (`icon-upload hide-text btn-link` → `/upload/`), matching Bonakude's centre action. Primary menu: "My Collection" and "Settings" headers carry `hide-menu-folded`, so the collapsed sidebar rail shows icons only.
+
+## 4. Mobile
 
 Charts rows at 375 px: Play button ≥ 44 px, title/artist truncate with ellipsis, no horizontal scroll.
 
 ## DeepDiary tasks
 
-- #169 Relink tracks to the 12 empty releases (E-1 data, blocked on catalogue owner)
-- #170 Hide unplayable releases, player feedback, guard, relink tool (E-1 code)
+- #169 Relink tracks to the 12 empty releases (item 1, blocked on catalogue owner)
+- #170 Deploy playable-releases.php; relink tool; save guard (items 2-4)
 - #171 Listener home hub
