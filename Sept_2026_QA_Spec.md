@@ -18,17 +18,29 @@ Tracking: DeepDiary project **"Empyrian - CEO backlog"** (id 19).
 | The Art of Smoking Cigarettes (4802) | 1 track (MARLBORO RED) | Plays that one track |
 | Single tracks (5402, 5317) | the track | Plays correctly |
 
-**Root cause (data, not the click handler):** the album/playlist posts on Charts reference child track posts that were deleted in the WordPress-to-S3 migration. The API is correct; it has nothing to play. This is the problem documented in August as the "Empyrian Data Recovery" follow-up, still open. 12 of 13 containers are still empty; 125 track posts with working S3 audio exist but aren't linked to any container.
+**Root cause:** the album/playlist posts pointed at track posts deleted in the WordPress-to-S3 migration, so the Play Block API returned nothing for them.
 
-A second, code-side defect makes it look like a broken button: when the API returns `[]`, the player gives no feedback and keeps the previous track, so clicking KLAN4EVA loads "MARLBORO RED" paused.
+**Fixed live (27 Sep 2026):** all 13 albums/playlists relinked to their existing track posts (matched by cover art, filename numbering, the album descriptions' tracklists and the local `Music/KLAN` library, confirmed by the CEO), and the 9 unlinked REALapse tracks published as a new release, **Deelow – The REALapse EP** (post 5574). Every Play button on `/charts/` was re-tested and plays its own first track.
 
-**Fix:**
-1. **Data (blocking, needs the catalogue owner):** relink the 125 existing track posts to their albums/playlists. Start with the high-confidence lead: tracks 5329–5334 ("01 Sixes" … "06 Rawkus") are the Sixes EP (4821). The rest need each album's track list confirmed.
-2. **wp-admin relink tool:** lists each album/playlist with its missing track slots and a searchable picker of unlinked tracks (title, S3 artist folder, file name); saving writes the container's `post` meta.
-3. **Hide unplayable releases (code ready, not deployed):** `wp-theme-additions/playable-releases.php` on this branch marks every post whose Play Block API returns no tracks (`_empyrian_unplayable`), keeps them out of Charts, Discover and search, shows "This release has no playable tracks yet" on the release page, and re-checks daily and on save. **Deploy:** append it to the live theme's `functions.php` (Appearance → Theme File Editor → Muzik → functions.php, after the "Mynger station sync" line), open any wp-admin page once to run the first check, then purge LiteSpeed Cache.
-4. **Guard:** saving an album/playlist with a missing or deleted track id fails with an admin notice.
+Previous `post` meta values (all pointing at deleted posts), kept for the record:
 
-**Acceptance:** every Play button on `/charts/` starts the expected track (scripted check clicking each one, verifying `audio.currentSrc` changes to that release's first track and `paused == false`); the audit reports 0 empty containers.
+| Post | Release | Old track IDs | New track IDs |
+|---|---|---|---|
+| 2127 | Mount Purp | 4321,4369…4407 (21) | 5280,5281,5282,5283,5284,5279,5285…5299 |
+| 4821 | Sixes EP | 4807,4809,4811,4815,4817,4819 | 5329–5334 |
+| 4802 | The Art of Smoking Cigarettes | 4794,4796,4798,4800 | 5341,5342,4798,5343 |
+| 4792 | Pagne Loves Vanity | 4778–4788 | 5335–5340 |
+| 4910 | And Now You Die | 4879,4896…4908 | 5363–5369 |
+| 4877 | Unmixed Unmastered EP | 4858…4875 | 5351–5358 |
+| 4837 | fumbled | 4823…4835 | 5344–5350 |
+| 4927 | 3 Mad Kings | 4913,4923,4925 | 5370,5372,5371 |
+| 4790 | Planet 2.0 | 4753…4774 | 5322,5320,5323,5321,5327,5325,5318,5324,5326,5319,5328 |
+| 4615 | Promo Tape | 2324,4603…4613 | 5306,5304,5308,5305,5307,5303,5302 |
+| 5093 | KLAN4EVA | 5066…5090 | 5393,5395,5391,5396,5390,5400,5392,5399,5394,5398,5397 |
+| 5134 | Faith Takes | 5121…5132 | 5401–5406 |
+| 4855 | Freedom of Jail EP | 4839,4849,4851,4853 | 5359,5360,5361,5362 |
+
+**Remaining (prevention):** an `empyrian-playable` plugin (in this repo, installed via Plugins → Upload, never theme/plugin file edits) that hides any release whose track list resolves to no published tracks and blocks saving one. It must read the `post` meta directly; calling the Play Block REST route in-process echoes JSON and exits, which took down wp-admin on 26 Sep. Tested on the local docker copy first.
 
 ## 2. Home hub (empyrian.net front page)
 
@@ -47,16 +59,22 @@ The same data feeds Hub Cards (`GET /wp-json/empyrian/v1/hub/cards`, H-2 shape) 
 
 **Acceptance:** a signed-out visitor sees Radio, Charts and New releases with no empty sections; a signed-in user sees Continue listening after playing one track; every Play on the page works (E-1 check).
 
-## 3. Navigation (done live, 26 Sep)
+## 3. Done live (26–27 Sep)
 
-Mobile menu: the "Playlist" slot is now a centre **Upload** button (`icon-upload hide-text btn-link` → `/upload/`), matching Bonakude's centre action. Primary menu: "My Collection" and "Settings" headers carry `hide-menu-folded`, so the collapsed sidebar rail shows icons only.
+- Mobile bottom bar: centre **Upload** button (`icon-upload hide-text btn-link` → `/upload/`), matching Bonakude.
+- Collapsed desktop sidebar: "My Collection" and "Settings" headers hidden (`hide-menu-folded`).
+- Android app (`empyrian-native` branch `feature/target-sdk-36`, 1.0.3 / versionCode 5): target SDK 36, WebView inside the safe area, dark status bar icons, CI builds APK + AAB. Signed AAB built and emulator-tested.
 
-## 4. Mobile
+## 4. Performance (Bonakude parity)
+
+Empyrian answers in ~1.15 s (Hostinger CDN, no page-cache hit); Bonakude answers in ~0.16 s behind Cloudflare. Move empyrian.net's nameservers to Cloudflare and apply `docs/CLOUDFLARE.md` (cache bypass for wp-admin, login, members, OIDC). Needs the Cloudflare account and the Hostinger domain panel.
+
+## 5. Mobile
 
 Charts rows at 375 px: Play button ≥ 44 px, title/artist truncate with ellipsis, no horizontal scroll.
 
 ## DeepDiary tasks
 
-- #169 Relink tracks to the 12 empty releases (item 1, blocked on catalogue owner)
-- #170 Deploy playable-releases.php; relink tool; save guard (items 2-4)
+- #170 empyrian-playable plugin (prevention)
 - #171 Listener home hub
+- #177 Cloudflare for empyrian.net
