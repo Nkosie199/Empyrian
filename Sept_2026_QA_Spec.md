@@ -77,4 +77,4 @@ Charts rows at 375 px: Play button ≥ 44 px, title/artist truncate with ellipsi
 
 - #170 empyrian-playable plugin (prevention)
 - #171 Listener home hub
-- #177 Cloudflare for empyrian.net
+- #195 Cloudflare for empyrian.net
