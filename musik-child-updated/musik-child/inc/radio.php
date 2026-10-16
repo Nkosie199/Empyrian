@@ -5,7 +5,6 @@ const EMPYRIAN_RADIO_NAME       = 'Empyrian Radio';
 const EMPYRIAN_RADIO_HORIZON    = DAY_IN_SECONDS;
 const EMPYRIAN_RADIO_MIN_TRACKS = 5;
 
-require_once __DIR__ . '/radio-consent.php';
 require_once __DIR__ . '/radio-duration.php';
 require_once __DIR__ . '/radio-embed.php';
 
@@ -68,7 +67,7 @@ function empyrian_radio_refresh() {
 		foreach ( isset( $items[0] ) ? $items : array( $items ) as $item ) {
 			$id   = (int) ( $item['id'] ?? 0 );
 			$post = $id ? get_post( $id ) : null;
-			if ( ! $post || 'audio' !== ( $item['type'] ?? '' ) || empty( $item['stream_url'] ) || ! is_post_publicly_viewable( $post ) || ! empyrian_radio_has_consent( $post->post_author ) ) {
+			if ( ! $post || 'audio' !== ( $item['type'] ?? '' ) || empty( $item['stream_url'] ) || ! is_post_publicly_viewable( $post ) ) {
 				continue;
 			}
 			$duration = (int) get_post_meta( $id, '_empyrian_radio_duration', true );
