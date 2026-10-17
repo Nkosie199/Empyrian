@@ -7,7 +7,10 @@ const EMPYRIAN_RADIO_MIN_TRACKS = 5;
 
 require_once __DIR__ . '/radio-duration.php';
 require_once __DIR__ . '/radio-catalogue.php';
+require_once __DIR__ . '/radio-schedule.php';
 require_once __DIR__ . '/radio-embed.php';
+require_once __DIR__ . '/radio-page.php';
+require_once __DIR__ . '/radio-admin.php';
 
 add_action( 'empyrian_radio_refresh', empyrian_safe( 'empyrian_radio_refresh' ) );
 add_action( 'empyrian_radio_refresh_soon', empyrian_safe( 'empyrian_radio_refresh' ) );
@@ -40,100 +43,17 @@ add_action(
 	)
 );
 
+// A finished pass that changed the catalogue replans what's ahead, so new tracks join and removed ones leave.
 function empyrian_radio_refresh() {
-	empyrian_radio_extend_schedule( empyrian_radio_refresh_batch(), time() );
-}
-
-function empyrian_radio_still_valid_schedule( array $tracks, $now ) {
-	$stored = get_option( 'empyrian_radio_schedule', array() );
-	$valid  = array();
-	foreach ( is_array( $stored ) ? $stored : array() as $slot ) {
-		$upcoming = $slot['start'] > $now;
-		if ( $upcoming && ! isset( $tracks[ $slot['id'] ] ) ) {
-			break;
-		}
-		if ( $slot['start'] + $slot['duration'] >= $now - 4 * HOUR_IN_SECONDS ) {
-			$valid[] = $slot;
-		}
+	$tracks  = empyrian_radio_refresh_batch();
+	$catalog = array_keys( $tracks );
+	sort( $catalog );
+	if ( ! get_option( 'empyrian_radio_pass' ) && get_option( 'empyrian_radio_planned_catalog' ) !== $catalog ) {
+		update_option( 'empyrian_radio_planned_catalog', $catalog, false );
+		empyrian_radio_replan_from( time() + 1 );
+		return;
 	}
-	return $valid;
-}
-
-function empyrian_radio_extend_schedule( array $tracks, $now ) {
-	$schedule = empyrian_radio_still_valid_schedule( $tracks, $now );
-	if ( count( $tracks ) >= EMPYRIAN_RADIO_MIN_TRACKS ) {
-		$last = end( $schedule );
-		$at   = $last ? max( $now, $last['start'] + $last['duration'] ) : $now;
-		while ( $at < $now + EMPYRIAN_RADIO_HORIZON ) {
-			$id         = empyrian_radio_pick( $tracks, $schedule, $at );
-			$schedule[] = array(
-				'id'       => $id,
-				'start'    => $at,
-				'duration' => $tracks[ $id ]['duration'],
-			);
-			$at        += $tracks[ $id ]['duration'];
-		}
-	}
-	update_option( 'empyrian_radio_schedule', $schedule, false );
-	return $schedule;
-}
-
-// No track twice within 4 hours, no artist twice within 45 minutes; new uploads get double airtime.
-function empyrian_radio_pick( array $tracks, array $schedule, $at ) {
-	$recent_tracks  = array();
-	$recent_artists = array();
-	$last_played    = array_fill_keys( array_keys( $tracks ), 0 );
-	foreach ( $schedule as $slot ) {
-		if ( isset( $last_played[ $slot['id'] ] ) ) {
-			$last_played[ $slot['id'] ] = max( $last_played[ $slot['id'] ], $slot['start'] );
-		}
-		if ( $slot['start'] > $at - 4 * HOUR_IN_SECONDS ) {
-			$recent_tracks[ $slot['id'] ] = true;
-		}
-		if ( $slot['start'] > $at - 45 * MINUTE_IN_SECONDS && isset( $tracks[ $slot['id'] ] ) ) {
-			$recent_artists[ strtolower( $tracks[ $slot['id'] ]['artist'] ) ] = true;
-		}
-	}
-	$unplayed = array_diff_key( $tracks, $recent_tracks );
-	$fresh    = array_filter(
-		$unplayed,
-		function ( $track ) use ( $recent_artists ) {
-			return ! isset( $recent_artists[ strtolower( $track['artist'] ) ] );
-		}
-	);
-	if ( ! $fresh ) {
-		asort( $last_played );
-		$fresh = $unplayed ? $unplayed : array_intersect_key( $tracks, array_slice( $last_played, 0, (int) ceil( count( $tracks ) / 2 ), true ) );
-	}
-	$weighted = array();
-	foreach ( $fresh as $track ) {
-		$weight = $track['published'] > $at - 14 * DAY_IN_SECONDS ? 2 : 1;
-		for ( $i = 0; $i < $weight; $i++ ) {
-			$weighted[] = $track['id'];
-		}
-	}
-	return $weighted[ wp_rand( 0, count( $weighted ) - 1 ) ];
-}
-
-function empyrian_radio_slots( $now, $hours ) {
-	$tracks   = empyrian_radio_tracks();
-	$schedule = get_option( 'empyrian_radio_schedule', array() );
-	$last     = is_array( $schedule ) && $schedule ? end( $schedule ) : null;
-	if ( ! $last || $last['start'] + $last['duration'] < $now + $hours * HOUR_IN_SECONDS ) {
-		$schedule = empyrian_radio_extend_schedule( $tracks, $now );
-	}
-	$slots = array();
-	foreach ( $schedule as $slot ) {
-		$end = $slot['start'] + $slot['duration'];
-		if ( $end > $now && $slot['start'] < $now + $hours * HOUR_IN_SECONDS && isset( $tracks[ $slot['id'] ] ) ) {
-			$track             = $tracks[ $slot['id'] ];
-			$track['startsAt'] = gmdate( 'c', $slot['start'] );
-			$track['start']    = $slot['start'];
-			unset( $track['published'] );
-			$slots[] = $track;
-		}
-	}
-	return $slots;
+	empyrian_radio_extend_schedule( $tracks, time() );
 }
 
 function empyrian_radio_now( $now ) {

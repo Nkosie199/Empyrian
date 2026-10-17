@@ -24,30 +24,6 @@ add_action(
 	)
 );
 
-add_shortcode(
-	'empyrian_radio',
-	empyrian_safe(
-		function () {
-			$slots = empyrian_radio_slots( time(), 6 );
-			$guide = '';
-			foreach ( array_slice( $slots, 1, 12 ) as $slot ) {
-				$guide .= sprintf(
-					'<li><time datetime="%1$s">%2$s</time> <strong>%3$s</strong> <span>%4$s</span></li>',
-					esc_attr( $slot['startsAt'] ),
-					esc_html( wp_date( get_option( 'time_format' ), $slot['start'] ) ),
-					esc_html( $slot['title'] ),
-					esc_html( $slot['artist'] )
-				);
-			}
-			return '<div class="empyrian-radio-page">'
-				. '<iframe class="empyrian-radio-frame" src="' . esc_url( home_url( '/?empyrian_radio=embed' ) ) . '" title="' . esc_attr( EMPYRIAN_RADIO_NAME ) . '" allow="autoplay" style="width:100%;border:0;height:16rem" onload="' . esc_attr( "var f=this;new ResizeObserver(function(){f.style.height=f.contentDocument.body.scrollHeight+'px'}).observe(f.contentDocument.body)" ) . '"></iframe>'
-				. ( $guide ? '<h3>Coming up</h3><ol class="empyrian-radio-guide">' . $guide . '</ol>' : '' )
-				. '</div>';
-		},
-		''
-	)
-);
-
 function empyrian_radio_render_embed( $dark ) {
 	$config = array(
 		'now'      => rest_url( 'empyrian/v1/radio/now' ),
