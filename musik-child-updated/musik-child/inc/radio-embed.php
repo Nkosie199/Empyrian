@@ -203,11 +203,14 @@ a { color: var(--accent); }
 		navigator.mediaSession.setActionHandler('nexttrack', advance);
 	}
 
+	function reportSize() { post('size', { height: document.body.scrollHeight }); }
+	new ResizeObserver(reportSize).observe(document.body);
+
 	window.addEventListener('message', function (event) {
 		if (config.origins.indexOf(event.origin) === -1 || !event.data || typeof event.data.type !== 'string') return;
 		parentOrigin = event.origin;
 		switch (event.data.type) {
-			case 'mynger:station:hello': post('ready', { station: config.station, version: 1 }); show(current); state(); break;
+			case 'mynger:station:hello': post('ready', { station: config.station, version: 1 }); show(current); state(); reportSize(); break;
 			case 'mynger:station:play': audio.paused && live ? tuneIn().then(play) : play(); break;
 			case 'mynger:station:pause': pause(); break;
 			case 'mynger:station:next': advance(); break;
