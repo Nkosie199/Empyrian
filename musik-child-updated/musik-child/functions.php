@@ -16,5 +16,6 @@ function empyrian_oidc_settings( $settings ) {
 
 require_once __DIR__ . '/inc/safe.php';
 empyrian_safe_load( __DIR__ . '/inc/theme-switch.php' );
+empyrian_safe_load( __DIR__ . '/inc/parent-assets.php' );
 empyrian_safe_load( __DIR__ . '/inc/play-block-privacy.php' );
 empyrian_safe_load( __DIR__ . '/inc/radio.php' );
