@@ -130,7 +130,7 @@ function empyrian_radio_render_admin() {
 			<label><?php esc_html_e( 'Track', 'musik-child' ); ?>
 				<select name="track" required>
 					<?php foreach ( $tracks as $track ) : ?>
-						<option value="<?php echo esc_attr( $track['id'] ); ?>"><?php echo esc_html( $track['title'] . ' — ' . $track['artist'] ); ?></option>
+						<option value="<?php echo esc_attr( $track['id'] ); ?>"><?php echo esc_html( $track['title'] . ( $track['artist'] ? ' — ' . $track['artist'] : '' ) ); ?></option>
 					<?php endforeach; ?>
 				</select>
 			</label>
