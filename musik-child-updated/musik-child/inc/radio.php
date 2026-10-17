@@ -6,6 +6,7 @@ const EMPYRIAN_RADIO_HORIZON    = DAY_IN_SECONDS;
 const EMPYRIAN_RADIO_MIN_TRACKS = 5;
 
 require_once __DIR__ . '/radio-duration.php';
+require_once __DIR__ . '/radio-catalogue.php';
 require_once __DIR__ . '/radio-embed.php';
 
 add_action( 'empyrian_radio_refresh', empyrian_safe( 'empyrian_radio_refresh' ) );
@@ -39,68 +40,8 @@ add_action(
 	)
 );
 
-// Over HTTP, never in-process: calling Play Block's REST callbacks directly echoes and exits.
-function empyrian_radio_get_json( $path ) {
-	$response = wp_remote_get( rest_url( $path ), array( 'timeout' => 15 ) );
-	if ( is_wp_error( $response ) || 200 !== wp_remote_retrieve_response_code( $response ) ) {
-		return null;
-	}
-	return json_decode( wp_remote_retrieve_body( $response ), true );
-}
-
-function empyrian_radio_full_size( $url ) {
-	return $url ? preg_replace( '/-\d+x\d+(\.\w+)$/', '$1', $url ) : null;
-}
-
 function empyrian_radio_refresh() {
-	$listing = empyrian_radio_get_json( 'play/play/items' );
-	if ( ! is_array( $listing ) ) {
-		return;
-	}
-	$tracks = array();
-	$probes = 0;
-	foreach ( $listing as $entry ) {
-		$items = empyrian_radio_get_json( 'play/play/' . (int) strtok( (string) $entry, ':' ) );
-		if ( ! is_array( $items ) ) {
-			continue;
-		}
-		foreach ( isset( $items[0] ) ? $items : array( $items ) as $item ) {
-			$id   = (int) ( $item['id'] ?? 0 );
-			$post = $id ? get_post( $id ) : null;
-			if ( ! $post || 'audio' !== ( $item['type'] ?? '' ) || empty( $item['stream_url'] ) || ! is_post_publicly_viewable( $post ) ) {
-				continue;
-			}
-			$duration = (int) get_post_meta( $id, '_empyrian_radio_duration', true );
-			$checked  = (int) get_post_meta( $id, '_empyrian_radio_duration_checked', true );
-			if ( $duration <= 0 && $probes < 25 && $checked < time() - WEEK_IN_SECONDS ) {
-				++$probes;
-				$duration = empyrian_radio_mp3_duration( $item['stream_url'] );
-				update_post_meta( $id, '_empyrian_radio_duration', $duration );
-				update_post_meta( $id, '_empyrian_radio_duration_checked', time() );
-			}
-			if ( $duration < MINUTE_IN_SECONDS ) {
-				continue;
-			}
-			$artist        = trim( (string) ( $item['artist'] ?? '' ) );
-			$tracks[ $id ] = array(
-				'id'         => $id,
-				'title'      => html_entity_decode( (string) ( $item['title'] ?? get_the_title( $id ) ), ENT_QUOTES ),
-				'artist'     => $artist ? $artist : (string) ( $item['user'] ?? '' ),
-				'artworkUrl' => empyrian_radio_full_size( $item['artwork_url'] ?? '' ),
-				'streamUrl'  => $item['stream_url'],
-				'uri'        => $item['uri'] ?? get_permalink( $id ),
-				'duration'   => $duration,
-				'published'  => (int) get_post_time( 'U', true, $id ),
-			);
-		}
-	}
-	update_option( 'empyrian_radio_tracks', $tracks, false );
-	empyrian_radio_extend_schedule( $tracks, time() );
-}
-
-function empyrian_radio_tracks() {
-	$tracks = get_option( 'empyrian_radio_tracks', array() );
-	return is_array( $tracks ) ? $tracks : array();
+	empyrian_radio_extend_schedule( empyrian_radio_refresh_batch(), time() );
 }
 
 function empyrian_radio_still_valid_schedule( array $tracks, $now ) {
