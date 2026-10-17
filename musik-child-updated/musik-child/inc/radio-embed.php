@@ -51,7 +51,7 @@ add_shortcode(
 function empyrian_radio_render_embed( $dark ) {
 	$config = array(
 		'now'      => rest_url( 'empyrian/v1/radio/now' ),
-		'schedule' => rest_url( 'empyrian/v1/radio/schedule?hours=3' ),
+		'guide'    => rest_url( 'empyrian/v1/radio/guide?hours=3' ),
 		'origins'  => EMPYRIAN_RADIO_EMBED_ORIGINS,
 		'station'  => EMPYRIAN_RADIO_NAME,
 	);
@@ -149,7 +149,7 @@ a { color: var(--accent); }
 	}
 
 	function tuneIn() {
-		return Promise.all([fetch(config.now).then(function (r) { return r.json(); }), fetch(config.schedule).then(function (r) { return r.json(); })])
+		return Promise.all([fetch(config.now).then(function (r) { return r.json(); }), fetch(config.guide).then(function (r) { return r.json(); })])
 			.then(function (results) {
 				var now = results[0];
 				if (now.offAir || !now.now) { queue = []; load(null); post('error', { code: 'offAir', message: config.station + ' is off air' }); return; }

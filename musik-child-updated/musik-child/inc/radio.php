@@ -184,7 +184,7 @@ add_action(
 			);
 			register_rest_route(
 				'empyrian/v1',
-				'/radio/schedule',
+				'/radio/guide',
 				array(
 					'methods'             => 'GET',
 					'permission_callback' => '__return_true',
