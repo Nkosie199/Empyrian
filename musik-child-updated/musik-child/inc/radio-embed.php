@@ -152,10 +152,10 @@ a { color: var(--accent); }
 		return Promise.all([fetch(config.now).then(function (r) { return r.json(); }), fetch(config.schedule).then(function (r) { return r.json(); })])
 			.then(function (results) {
 				var now = results[0];
-				if (now.offAir || !now.track) { queue = []; load(null); post('error', { code: 'offAir', message: config.station + ' is off air' }); return; }
-				queue = (results[1].slots || []).filter(function (slot) { return slot.start > now.track.start; });
+				if (now.offAir || !now.now) { queue = []; load(null); post('error', { code: 'offAir', message: config.station + ' is off air' }); return; }
+				queue = (results[1].slots || []).filter(function (slot) { return slot.start > now.now.start; });
 				live = true;
-				load(now.track, now.offsetSeconds);
+				load(now.now, now.offsetSeconds);
 			})
 			.catch(function () { el('.status').textContent = 'Can’t reach the station right now.'; post('error', { code: 'network', message: 'Station unreachable' }); });
 	}

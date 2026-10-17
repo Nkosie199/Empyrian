@@ -201,7 +201,7 @@ function empyrian_radio_now( $now ) {
 		return array(
 			'station' => EMPYRIAN_RADIO_NAME,
 			'offAir'  => true,
-			'track'   => null,
+			'now'     => null,
 			'next'    => array(),
 		);
 	}
@@ -209,7 +209,7 @@ function empyrian_radio_now( $now ) {
 	return array(
 		'station'       => EMPYRIAN_RADIO_NAME,
 		'offAir'        => false,
-		'track'         => $current,
+		'now'           => $current,
 		'startedAt'     => $current['startsAt'],
 		'offsetSeconds' => max( 0, $now - $current['start'] ),
 		'next'          => array_slice( $slots, 0, 3 ),
