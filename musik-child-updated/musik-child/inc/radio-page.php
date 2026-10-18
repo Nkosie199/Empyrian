@@ -7,11 +7,23 @@ const EMPYRIAN_RADIO_GUIDE_TICK  = 30 * MINUTE_IN_SECONDS;
 add_shortcode( 'empyrian_radio', empyrian_safe( 'empyrian_radio_render_page', '' ) );
 
 function empyrian_radio_render_page() {
-	$resize = "var f=this;f.contentDocument.documentElement.classList.add('sized-by-parent');new ResizeObserver(function(){f.style.height=f.contentDocument.body.scrollHeight+'px'}).observe(f.contentDocument.body)";
 	return '<div class="empyrian-radio-page">'
-		. '<iframe class="empyrian-radio-frame" src="' . esc_url( home_url( '/?empyrian_radio=embed' ) ) . '" title="' . esc_attr( EMPYRIAN_RADIO_NAME ) . '" allow="autoplay" style="width:100%;border:0;height:16rem" onload="' . esc_attr( $resize ) . '"></iframe>'
+		. '<iframe class="empyrian-radio-frame" src="' . esc_url( home_url( '/?empyrian_radio=embed' ) ) . '" title="' . esc_attr( EMPYRIAN_RADIO_NAME ) . '" allow="autoplay" style="display:block;width:100%;border:0;aspect-ratio:16/9"></iframe>'
+		. empyrian_radio_player_script()
 		. empyrian_radio_render_guide( empyrian_radio_slots( time(), EMPYRIAN_RADIO_GUIDE_HOURS ), time() )
 		. '</div>';
+}
+
+// Greets the player the way Mynger does, so it reports its own height and the frame fits it at any width.
+function empyrian_radio_player_script() {
+	return "<script>(function (frame) {
+	frame.addEventListener('load', function () { frame.contentWindow.postMessage({ type: 'mynger:station:hello' }, location.origin); });
+	window.addEventListener('message', function (event) {
+		if (event.source !== frame.contentWindow || !event.data || event.data.type !== 'mynger:station:size') return;
+		frame.style.height = event.data.height + 'px';
+		frame.style.aspectRatio = 'auto';
+	});
+})(document.currentScript.previousElementSibling);</script>";
 }
 
 function empyrian_radio_render_guide( array $slots, $now ) {

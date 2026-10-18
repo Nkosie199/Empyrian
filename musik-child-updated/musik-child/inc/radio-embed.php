@@ -8,6 +8,13 @@ const EMPYRIAN_RADIO_EMBED_ORIGINS = array(
 	'http://localhost:4173',
 );
 
+// Mynger, plus this site's own pages that frame the player.
+function empyrian_radio_embed_origins() {
+	$home = wp_parse_url( home_url() );
+	$self = $home['scheme'] . '://' . $home['host'] . ( isset( $home['port'] ) ? ':' . $home['port'] : '' );
+	return array_merge( EMPYRIAN_RADIO_EMBED_ORIGINS, array( $self ) );
+}
+
 add_action(
 	'template_redirect',
 	empyrian_safe(
@@ -28,7 +35,7 @@ function empyrian_radio_render_embed( $dark ) {
 	$config = array(
 		'now'      => rest_url( 'empyrian/v1/radio/now' ),
 		'guide'    => rest_url( 'empyrian/v1/radio/guide?hours=3' ),
-		'origins'  => EMPYRIAN_RADIO_EMBED_ORIGINS,
+		'origins'  => empyrian_radio_embed_origins(),
 		'station'  => EMPYRIAN_RADIO_NAME,
 	);
 	?>
