@@ -6,6 +6,8 @@ const EMPYRIAN_RADIO_EMBED_ORIGINS = array(
 	'https://www.mynger.com',
 	'http://localhost:3000',
 	'http://localhost:4173',
+	'http://127.0.0.1:3000',
+	'http://127.0.0.1:4173',
 );
 
 // Mynger, plus this site's own pages that frame the player.
@@ -52,6 +54,8 @@ function empyrian_radio_render_embed( $dark ) {
 html, body { margin: 0; background: var(--bg); color: var(--fg); font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
 /* Once the framing page sizes this to fit, a scrollbar would only fight that sizing. */
 html.sized-by-parent { overflow: hidden; }
+/* Already on this site, so a link back to it would go nowhere new. */
+html.on-own-site .open { display: none; }
 .radio { display: flex; flex-wrap: wrap; gap: var(--pad); padding: var(--pad); align-items: center; }
 .art { flex: 1 1 8rem; max-width: 14rem; aspect-ratio: 1; border-radius: 0.75rem; background: var(--line) center/cover no-repeat; }
 .info { flex: 3 1 14rem; display: flex; flex-direction: column; gap: 0.4rem; min-width: 0; }
@@ -195,11 +199,21 @@ a { color: var(--accent); }
 	}
 	new ResizeObserver(reportSize).observe(document.body);
 
+	function greet(origin) {
+		document.documentElement.classList.add('sized-by-parent');
+		document.documentElement.classList.toggle('on-own-site', origin === location.origin);
+		post('ready', { station: config.station, version: 1 });
+		show(current);
+		state();
+		requestAnimationFrame(reportSize);
+	}
+
 	window.addEventListener('message', function (event) {
 		if (config.origins.indexOf(event.origin) === -1 || !event.data || typeof event.data.type !== 'string') return;
 		parentOrigin = event.origin;
 		switch (event.data.type) {
-			case 'mynger:station:hello': document.documentElement.classList.add('sized-by-parent'); post('ready', { station: config.station, version: 1 }); show(current); state(); requestAnimationFrame(reportSize); break;
+			case 'mynger:station:hello': greet(event.origin); break;
+			case 'mynger:station:theme': document.documentElement.dataset.theme = event.data.dark ? 'dark' : 'light'; break;
 			case 'mynger:station:play': audio.paused && live ? tuneIn().then(play) : play(); break;
 			case 'mynger:station:pause': pause(); break;
 			case 'mynger:station:next': advance(); break;

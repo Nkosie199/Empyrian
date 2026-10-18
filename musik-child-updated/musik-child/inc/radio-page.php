@@ -9,16 +9,22 @@ add_shortcode( 'empyrian_radio', empyrian_safe( 'empyrian_radio_render_page', ''
 // The player address carries its file version so a cache never serves an older player to this page.
 function empyrian_radio_render_page() {
 	return '<div class="empyrian-radio-page">'
-		. '<iframe class="empyrian-radio-frame" src="' . esc_url( home_url( '/?empyrian_radio=embed&v=' . filemtime( __DIR__ . '/radio-embed.php' ) ) ) . '" title="' . esc_attr( EMPYRIAN_RADIO_NAME ) . '" allow="autoplay" style="display:block;width:100%;border:0;aspect-ratio:16/9"></iframe>'
+		. '<iframe class="empyrian-radio-frame" data-src="' . esc_url( home_url( '/?empyrian_radio=embed&v=' . filemtime( __DIR__ . '/radio-embed.php' ) ) ) . '" title="' . esc_attr( EMPYRIAN_RADIO_NAME ) . '" allow="autoplay" style="display:block;width:100%;border:0;aspect-ratio:16/9"></iframe>'
 		. empyrian_radio_player_script()
 		. empyrian_radio_render_guide( empyrian_radio_slots( time(), EMPYRIAN_RADIO_GUIDE_HOURS ), time() )
 		. '</div>';
 }
 
-// Greets the player the way Mynger does, so it reports its own height and the frame fits it at any width.
+// Greets the player the way Mynger does, so it reports its own height, and keeps it in the site's light or dark theme.
 function empyrian_radio_player_script() {
 	return "<script>(function (frame) {
-	frame.addEventListener('load', function () { frame.contentWindow.postMessage({ type: 'mynger:station:hello' }, location.origin); });
+	var root = document.documentElement;
+	var dark = function () { return root.classList.contains('dark'); };
+	var send = function (message) { frame.contentWindow.postMessage(message, location.origin); };
+	var sendTheme = function () { send({ type: 'mynger:station:theme', dark: dark() }); };
+	frame.addEventListener('load', function () { send({ type: 'mynger:station:hello' }); sendTheme(); });
+	frame.src = frame.dataset.src + (dark() ? '&theme=dark' : '');
+	new MutationObserver(sendTheme).observe(root, { attributes: true, attributeFilter: ['class'] });
 	window.addEventListener('message', function (event) {
 		if (event.source !== frame.contentWindow || !event.data || event.data.type !== 'mynger:station:size') return;
 		frame.style.height = event.data.height + 'px';
