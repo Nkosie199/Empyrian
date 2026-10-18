@@ -6,9 +6,10 @@ const EMPYRIAN_RADIO_GUIDE_TICK  = 30 * MINUTE_IN_SECONDS;
 
 add_shortcode( 'empyrian_radio', empyrian_safe( 'empyrian_radio_render_page', '' ) );
 
+// The player address carries its file version so a cache never serves an older player to this page.
 function empyrian_radio_render_page() {
 	return '<div class="empyrian-radio-page">'
-		. '<iframe class="empyrian-radio-frame" src="' . esc_url( home_url( '/?empyrian_radio=embed' ) ) . '" title="' . esc_attr( EMPYRIAN_RADIO_NAME ) . '" allow="autoplay" style="display:block;width:100%;border:0;aspect-ratio:16/9"></iframe>'
+		. '<iframe class="empyrian-radio-frame" src="' . esc_url( home_url( '/?empyrian_radio=embed&v=' . filemtime( __DIR__ . '/radio-embed.php' ) ) ) . '" title="' . esc_attr( EMPYRIAN_RADIO_NAME ) . '" allow="autoplay" style="display:block;width:100%;border:0;aspect-ratio:16/9"></iframe>'
 		. empyrian_radio_player_script()
 		. empyrian_radio_render_guide( empyrian_radio_slots( time(), EMPYRIAN_RADIO_GUIDE_HOURS ), time() )
 		. '</div>';
