@@ -7,7 +7,7 @@ const EMPYRIAN_RADIO_GUIDE_TICK  = 30 * MINUTE_IN_SECONDS;
 add_shortcode( 'empyrian_radio', empyrian_safe( 'empyrian_radio_render_page', '' ) );
 
 function empyrian_radio_render_page() {
-	$resize = "var f=this;new ResizeObserver(function(){f.style.height=f.contentDocument.body.scrollHeight+'px'}).observe(f.contentDocument.body)";
+	$resize = "var f=this;f.contentDocument.documentElement.classList.add('sized-by-parent');new ResizeObserver(function(){f.style.height=f.contentDocument.body.scrollHeight+'px'}).observe(f.contentDocument.body)";
 	return '<div class="empyrian-radio-page">'
 		. '<iframe class="empyrian-radio-frame" src="' . esc_url( home_url( '/?empyrian_radio=embed' ) ) . '" title="' . esc_attr( EMPYRIAN_RADIO_NAME ) . '" allow="autoplay" style="width:100%;border:0;height:16rem" onload="' . esc_attr( $resize ) . '"></iframe>'
 		. empyrian_radio_render_guide( empyrian_radio_slots( time(), EMPYRIAN_RADIO_GUIDE_HOURS ), time() )

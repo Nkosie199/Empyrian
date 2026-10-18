@@ -43,8 +43,8 @@ function empyrian_radio_render_embed( $dark ) {
 [data-theme="dark"] { --bg: #14122b; --fg: #f4f3ff; --muted: #b9b6d9; --accent: #a9a7f0; --accent-fg: #14122b; --line: #2c2950; }
 * { box-sizing: border-box; }
 html, body { margin: 0; background: var(--bg); color: var(--fg); font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-/* Whatever frames this sizes it to fit, so a scrollbar would only fight that sizing. */
-html { overflow: hidden; }
+/* Once the framing page sizes this to fit, a scrollbar would only fight that sizing. */
+html.sized-by-parent { overflow: hidden; }
 .radio { display: flex; flex-wrap: wrap; gap: var(--pad); padding: var(--pad); align-items: center; }
 .art { flex: 1 1 8rem; max-width: 14rem; aspect-ratio: 1; border-radius: 0.75rem; background: var(--line) center/cover no-repeat; }
 .info { flex: 3 1 14rem; display: flex; flex-direction: column; gap: 0.4rem; min-width: 0; }
@@ -181,14 +181,18 @@ a { color: var(--accent); }
 		navigator.mediaSession.setActionHandler('nexttrack', advance);
 	}
 
-	function reportSize() { post('size', { height: document.body.scrollHeight }); }
+	// Never sent as 0: while the host page is still laying this frame out it can briefly measure 0.
+	function reportSize() {
+		var height = document.body.scrollHeight;
+		if (height) post('size', { height: height });
+	}
 	new ResizeObserver(reportSize).observe(document.body);
 
 	window.addEventListener('message', function (event) {
 		if (config.origins.indexOf(event.origin) === -1 || !event.data || typeof event.data.type !== 'string') return;
 		parentOrigin = event.origin;
 		switch (event.data.type) {
-			case 'mynger:station:hello': post('ready', { station: config.station, version: 1 }); show(current); state(); reportSize(); break;
+			case 'mynger:station:hello': document.documentElement.classList.add('sized-by-parent'); post('ready', { station: config.station, version: 1 }); show(current); state(); requestAnimationFrame(reportSize); break;
 			case 'mynger:station:play': audio.paused && live ? tuneIn().then(play) : play(); break;
 			case 'mynger:station:pause': pause(); break;
 			case 'mynger:station:next': advance(); break;
