@@ -43,6 +43,8 @@ function empyrian_radio_render_embed( $dark ) {
 [data-theme="dark"] { --bg: #14122b; --fg: #f4f3ff; --muted: #b9b6d9; --accent: #a9a7f0; --accent-fg: #14122b; --line: #2c2950; }
 * { box-sizing: border-box; }
 html, body { margin: 0; background: var(--bg); color: var(--fg); font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+/* Whatever frames this sizes it to fit, so a scrollbar would only fight that sizing. */
+html { overflow: hidden; }
 .radio { display: flex; flex-wrap: wrap; gap: var(--pad); padding: var(--pad); align-items: center; }
 .art { flex: 1 1 8rem; max-width: 14rem; aspect-ratio: 1; border-radius: 0.75rem; background: var(--line) center/cover no-repeat; }
 .info { flex: 3 1 14rem; display: flex; flex-direction: column; gap: 0.4rem; min-width: 0; }
