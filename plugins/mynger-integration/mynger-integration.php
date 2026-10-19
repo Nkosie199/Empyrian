@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Mynger Integration (Empyrian)
  * Description: Routes all audio uploads to Mynger S3. Provides presigned-URL REST proxy and client-side direct upload JS.
- * Version: 1.0.2
+ * Version: 1.0.3
  */
 
 defined('ABSPATH') || exit;
@@ -121,6 +121,7 @@ function mynger_rest_presign(WP_REST_Request $req): WP_REST_Response {
 // ---------------------------------------------------------------------------
 add_action('add_attachment', 'mynger_redirect_to_s3');
 add_filter('wp_get_attachment_url', 'mynger_s3_attachment_url', 10, 2);
+add_filter('wp_generate_attachment_metadata', 'mynger_keep_media_metadata', 10, 2);
 
 // The attached file is an S3 URL, which WordPress would otherwise prefix with the uploads folder.
 function mynger_s3_attachment_url(string $url, int $att_id): string {
@@ -154,6 +155,7 @@ function mynger_redirect_to_s3(int $att_id): void {
     wp_update_post(['ID' => $att_id, 'guid' => $s3_url]);
     update_post_meta($att_id, 'mynger_s3_url', $s3_url);
     update_post_meta($att_id, 'mynger_user_id', $d['userId']);
+    mynger_save_media_metadata($att_id, $local, $mime);
     @unlink($local);
     error_log('Mynger Integration (Empyrian): ' . $filename . ' -> ' . $s3_url);
 }
@@ -225,3 +227,18 @@ add_action('wp_enqueue_scripts', function () {
         'platform' => 'empyrian',
     ]);
 });
+
+// The local file is gone once it is on S3, so WordPress can no longer read its length; read it first and keep it.
+function mynger_save_media_metadata(int $att_id, string $local, string $mime): void {
+    require_once ABSPATH . 'wp-admin/includes/media.php';
+    $meta = str_starts_with($mime, 'video/') ? wp_read_video_metadata($local) : wp_read_audio_metadata($local);
+    if ($meta) {
+        update_post_meta($att_id, 'mynger_media_metadata', $meta);
+        wp_update_attachment_metadata($att_id, $meta);
+    }
+}
+
+function mynger_keep_media_metadata(array $metadata, int $att_id): array {
+    $saved = get_post_meta($att_id, 'mynger_media_metadata', true);
+    return is_array($saved) ? array_merge($saved, array_filter($metadata)) : $metadata;
+}
