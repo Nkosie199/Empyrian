@@ -5,11 +5,15 @@ WordPress, the plugin starts the existing "Sign in with Mynger" OpenID Connect f
 to `<page>`. Someone already signed in to Mynger goes straight through (the OAuth client is first-party),
 so they land on the page signed in without typing anything. Without the parameter, nothing changes.
 
+Inside Mynger's iframe the site is third-party, so browsers would drop its usual cookies. For requests
+made in an iframe (`Sec-Fetch-Dest: iframe`) the plugin sends cookies as `SameSite=None; Secure; Partitioned`:
+the login sticks there, in a cookie jar the browser keeps separately for each site that embeds this one.
+
 Requires the OpenID Connect Generic Client plugin, already configured for Mynger.
 
 ## Deploy
 
-1. Test it locally first: the Bonakude repo's `tools/wp-local/README.md` (same plugin, same steps).
+1. Test it locally first: `tools/wp-local/README.md`.
 2. Upload the `mynger-sso-entry` folder to `wp-content/plugins/` over SFTP or the Hostinger File Manager
    (not the wp-admin plugin editor), then activate it under Plugins.
 3. Check `https://<site>/?mynger_sso=1` in a browser signed in to mynger.com.

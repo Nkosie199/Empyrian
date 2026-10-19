@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Mynger SSO entry
  * Description: Lets Mynger open this site already signed in: ?mynger_sso=1 starts the "Sign in with Mynger" (OpenID Connect) flow and returns to the same page.
- * Version: 1.0.0
+ * Version: 1.1.0
  * Requires Plugins: daggerhart-openid-connect-generic
  */
 
@@ -11,6 +11,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 add_action( 'template_redirect', 'mynger_sso_entry' );
+add_action( 'plugins_loaded', 'mynger_sso_partition_embedded_cookies' );
 
 function mynger_sso_entry() {
 	if ( ! isset( $_GET['mynger_sso'] ) ) {
@@ -33,4 +34,35 @@ function mynger_sso_entry() {
 	// The login endpoint is the Mynger API, so wp_safe_redirect would refuse it.
 	wp_redirect( $oidc->client_wrapper->get_authentication_url( array( 'redirect_to' => $target ) ) );
 	exit;
+}
+
+// Inside Mynger's iframe this site is third-party: browsers drop its default (Lax) cookies there, so a login would never stick.
+function mynger_sso_partition_embedded_cookies() {
+	if ( isset( $_SERVER['HTTP_SEC_FETCH_DEST'] ) && 'iframe' === $_SERVER['HTTP_SEC_FETCH_DEST'] ) {
+		header_register_callback( 'mynger_sso_rewrite_cookie_headers' );
+	}
+}
+
+function mynger_sso_rewrite_cookie_headers() {
+	$cookies = array_filter(
+		headers_list(),
+		function ( $header ) {
+			return 0 === stripos( $header, 'Set-Cookie:' );
+		}
+	);
+	if ( ! $cookies ) {
+		return;
+	}
+	header_remove( 'Set-Cookie' );
+	foreach ( $cookies as $cookie ) {
+		header( mynger_sso_partitioned_cookie( $cookie ), false );
+	}
+}
+
+function mynger_sso_partitioned_cookie( $header ) {
+	if ( false !== stripos( $header, 'samesite=' ) ) {
+		return $header;
+	}
+	$secure = preg_match( '/;\s*secure\b/i', $header ) ? '' : '; Secure';
+	return $header . $secure . '; SameSite=None; Partitioned';
 }
