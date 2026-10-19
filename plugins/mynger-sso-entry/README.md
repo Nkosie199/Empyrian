@@ -13,7 +13,7 @@ Requires the OpenID Connect Generic Client plugin, already configured for Mynger
 
 ## Deploy
 
-1. Test it locally first: `tools/wp-local/README.md`.
+1. Test it locally first: the Bonakude repo's `tools/wp-local/README.md` (same plugin, same steps).
 2. Upload the `mynger-sso-entry` folder to `wp-content/plugins/` over SFTP or the Hostinger File Manager
    (not the wp-admin plugin editor), then activate it under Plugins.
 3. Check `https://<site>/?mynger_sso=1` in a browser signed in to mynger.com.
