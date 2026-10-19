@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Mynger Integration (Empyrian)
  * Description: Routes all audio uploads to Mynger S3. Provides presigned-URL REST proxy and client-side direct upload JS.
- * Version: 1.0.3
+ * Version: 1.0.4
  */
 
 defined('ABSPATH') || exit;
@@ -189,6 +189,7 @@ function mynger_s3_upload(string $local_path, string $file_name, string $mime, a
 // 3. S3 DELETE on attachment removal
 // ---------------------------------------------------------------------------
 add_action('before_delete_post', 'mynger_s3_delete_on_remove', 5, 2);
+add_action('delete_attachment', 'mynger_s3_delete_on_remove', 5, 2);
 
 function mynger_s3_delete_on_remove(int $post_id, WP_Post $post): void {
     $s3_url = '';
