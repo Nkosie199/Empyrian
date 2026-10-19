@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Mynger Integration (Empyrian)
  * Description: Moves audio/video uploads to the uploader's Mynger S3 storage and removes them from S3 when their post is deleted.
- * Version: 1.1.0
+ * Version: 1.1.1
  */
 
 defined('ABSPATH') || exit;
@@ -247,21 +247,31 @@ function mynger_s3_upload(string $local_path, string $file_name, string $mime, a
 // ---------------------------------------------------------------------------
 add_action('before_delete_post', 'mynger_s3_delete_on_remove', 5, 2);
 add_action('delete_attachment', 'mynger_s3_delete_on_remove', 5, 2);
+add_action('trashed_post', 'mynger_delete_trashed_upload');
+
+// Members are told removing an upload can't be undone, so their own S3 uploads skip the trash.
+function mynger_delete_trashed_upload(int $post_id): void {
+    $post = get_post($post_id);
+    if ($post && mynger_own_s3_file_name($post)) {
+        wp_delete_post($post_id, true);
+    }
+}
+
+// The file name inside the author's own S3 folder; empty when the post links a file elsewhere.
+function mynger_own_s3_file_name(WP_Post $post): string {
+    $key     = $post->post_type === 'attachment' ? 'mynger_s3_url' : 'stream';
+    $s3_url  = (string) get_post_meta($post->ID, $key, true);
+    $subject = (string) get_user_meta((int) $post->post_author, 'openid-connect-generic-subject-identity', true);
+    $folder  = MYNGER_S3_BASE . '/' . $subject . '/';
+    return $subject && str_starts_with($s3_url, $folder) ? substr($s3_url, strlen($folder)) : '';
+}
 
 function mynger_s3_delete_on_remove(int $post_id, WP_Post $post): void {
-    $key    = $post->post_type === 'attachment' ? 'mynger_s3_url' : 'stream';
-    $s3_url = (string) get_post_meta($post_id, $key, true);
-    if (!$s3_url) {
+    $file_name = mynger_own_s3_file_name($post);
+    $d         = $file_name ? mynger_get_user_data((int) $post->post_author) : null;
+    if (!$d) {
         return;
     }
-
-    $d = mynger_get_user_data((int) $post->post_author);
-    // Only the author's own folder: a post can link to someone else's file.
-    $own_folder = $d ? MYNGER_S3_BASE . '/' . $d['userId'] . '/' : '';
-    if (!$d || !str_starts_with($s3_url, $own_folder)) {
-        return;
-    }
-    $file_name = substr($s3_url, strlen($own_folder));
 
     wp_remote_post(MYNGER_API_BASE . '/api/files/delete', [
         'headers' => ['Content-Type' => 'application/json', 'Authorization' => 'Bearer ' . $d['token']],
