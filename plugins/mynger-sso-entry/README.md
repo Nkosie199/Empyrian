@@ -5,6 +5,10 @@ WordPress, the plugin starts the existing "Sign in with Mynger" OpenID Connect f
 to `<page>`. Someone already signed in to Mynger goes straight through (the OAuth client is first-party),
 so they land on the page signed in without typing anything. Without the parameter, nothing changes.
 
+Inside Mynger's iframe the site is third-party, so browsers would drop its usual cookies. For requests
+made in an iframe (`Sec-Fetch-Dest: iframe`) the plugin sends cookies as `SameSite=None; Secure; Partitioned`:
+the login sticks there, in a cookie jar the browser keeps separately for each site that embeds this one.
+
 Requires the OpenID Connect Generic Client plugin, already configured for Mynger.
 
 ## Deploy
