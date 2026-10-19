@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Mynger Integration (Empyrian)
  * Description: Routes all audio uploads to Mynger S3. Provides presigned-URL REST proxy and client-side direct upload JS.
- * Version: 1.0.0
+ * Version: 1.0.1
  */
 
 defined('ABSPATH') || exit;
@@ -68,6 +68,12 @@ function mynger_rest_presign(WP_REST_Request $req): WP_REST_Response {
 // 2. SERVER-SIDE HOOK — re-upload audio to Mynger S3 after WP saves locally
 // ---------------------------------------------------------------------------
 add_action('add_attachment', 'mynger_redirect_to_s3');
+add_filter('wp_get_attachment_url', 'mynger_s3_attachment_url', 10, 2);
+
+// The attached file is an S3 URL, which WordPress would otherwise prefix with the uploads folder.
+function mynger_s3_attachment_url(string $url, int $att_id): string {
+    return (string) get_post_meta($att_id, 'mynger_s3_url', true) ?: $url;
+}
 
 function mynger_redirect_to_s3(int $att_id): void {
     $mime = (string) get_post_mime_type($att_id);
