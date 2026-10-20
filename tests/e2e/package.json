@@ -1,0 +1,13 @@
+{
+  "name": "empyrian-e2e",
+  "private": true,
+  "scripts": {
+    "test": "cypress run",
+    "test:public": "cypress run --spec \"cypress/e2e/public/**\"",
+    "test:member": "cypress run --spec \"cypress/e2e/member/**\"",
+    "open": "cypress open"
+  },
+  "devDependencies": {
+    "cypress": "14.5.4"
+  }
+}
