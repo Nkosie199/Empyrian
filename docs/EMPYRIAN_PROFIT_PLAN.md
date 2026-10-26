@@ -73,16 +73,17 @@ back to back. Dates are re-baselined as work lands.
 | new | CI running tests against the Docker copy | 2 |
 | new | Switch off EDD's "manual" gateway in production | 1 |
 
-### 2027 build (~15 agent-days, done by about 15 January)
+### 2027 build (~12 agent-days, done by about 12 January)
 
 | Dates | Work | Days |
 |---|---|---|
 | Jan 1–3 | Task 171: listener home hub | 3 |
-| Jan 4–6 | Task 491: Mynger Radio, following `docs/MYNGER-RADIO-SPEC.md` once the Board approves it | 3 |
-| Jan 7–9 | "Pay with COA" EDD payment method in our plugin | 3 |
-| Jan 10–11 | `empyrian/TRACK_PURCHASE` movement and catalogue row | 2 |
-| Jan 12–13 | Tips (`empyrian/DONATION`) | 2 |
-| Jan 14–15 | Artist earnings view with "Withdraw on BlockBank" | 2 |
+| Jan 4–6 | "Pay with COA" EDD payment method in our plugin | 3 |
+| Jan 7–8 | `empyrian/TRACK_PURCHASE` movement and catalogue row | 2 |
+| Jan 9–10 | Tips (`empyrian/DONATION`) | 2 |
+| Jan 11–12 | Artist earnings view with "Withdraw on BlockBank" | 2 |
+
+Mynger Radio (task 491) already shipped on 2026-10-18 and is live at `/radio`.
 
 WordPress rules apply: our own plugin only (never Musik, Play Block or EDD files), tested on the
 local Docker copy on every hook, with a backup and a Hostinger File Manager/SFTP rollback before any

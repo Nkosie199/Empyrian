@@ -1,6 +1,6 @@
 # Mynger Radio on Empyrian — spec
 
-Status: draft for owner review (2026-10-11). Once approved it is copied into DeepDiary as tasks and tracked there.
+Status: implemented 2026-10-17/18 in the `musik-child` theme (PR #6); live at `/radio` and `/radio/embed`. DeepDiary task 491 is Done.
 
 ## 1. Why
 
