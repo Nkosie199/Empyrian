@@ -9,7 +9,7 @@ add_shortcode( 'empyrian_radio', empyrian_safe( 'empyrian_radio_render_page', ''
 // The player address carries its file version so a cache never serves an older player to this page.
 function empyrian_radio_render_page() {
 	return '<div class="empyrian-radio-page">'
-		. '<iframe class="empyrian-radio-frame" data-src="' . esc_url( home_url( '/?empyrian_radio=embed&v=' . filemtime( __DIR__ . '/radio-embed.php' ) ) ) . '" title="' . esc_attr( EMPYRIAN_RADIO_NAME ) . '" allow="autoplay" style="display:block;width:100%;border:0;aspect-ratio:16/9"></iframe>'
+		. '<iframe class="empyrian-radio-frame" data-src="' . esc_url( home_url( '/?empyrian_radio=embed&v=' . filemtime( __DIR__ . '/radio-embed.php' ) ) ) . '" title="' . esc_attr( EMPYRIAN_RADIO_NAME ) . '" allow="autoplay" style="display:block;width:100%;border:0;height:16rem"></iframe>'
 		. empyrian_radio_player_script()
 		. empyrian_radio_render_guide( empyrian_radio_slots( time(), EMPYRIAN_RADIO_GUIDE_HOURS ), time() )
 		. '</div>';
@@ -28,7 +28,6 @@ function empyrian_radio_player_script() {
 	window.addEventListener('message', function (event) {
 		if (event.source !== frame.contentWindow || !event.data || event.data.type !== 'mynger:station:size') return;
 		frame.style.height = event.data.height + 'px';
-		frame.style.aspectRatio = 'auto';
 	});
 })(document.currentScript.previousElementSibling);</script>";
 }
