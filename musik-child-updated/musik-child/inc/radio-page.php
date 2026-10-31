@@ -16,11 +16,12 @@ function empyrian_radio_render_page() {
 }
 
 // Greets the player the way Mynger does, so it reports its own height, and keeps it in the site's light or dark theme.
+// Finds its elements by class: the theme's PJAX re-runs this script from <head>, where document.currentScript has no useful siblings.
 function empyrian_radio_player_script() {
 	return "<script>(function (frame) {
 	var root = document.documentElement;
 	var dark = function () { return root.classList.contains('dark'); };
-	var send = function (message) { frame.contentWindow.postMessage(message, location.origin); };
+	var send = function (message) { if (frame.isConnected) frame.contentWindow.postMessage(message, location.origin); };
 	var sendTheme = function () { send({ type: 'mynger:station:theme', dark: dark() }); };
 	frame.addEventListener('load', function () { send({ type: 'mynger:station:hello' }); sendTheme(); });
 	frame.src = frame.dataset.src + (dark() ? '&theme=dark' : '');
@@ -29,7 +30,7 @@ function empyrian_radio_player_script() {
 		if (event.source !== frame.contentWindow || !event.data || event.data.type !== 'mynger:station:size') return;
 		frame.style.height = event.data.height + 'px';
 	});
-})(document.currentScript.previousElementSibling);</script>";
+})(document.querySelector('.empyrian-radio-frame'));</script>";
 }
 
 function empyrian_radio_render_guide( array $slots, $now ) {
@@ -77,7 +78,7 @@ function empyrian_radio_render_guide( array $slots, $now ) {
 		. '<div class="station-guide__track">' . $blocks . '</div>'
 		. '<span class="station-guide__now" style="left:' . $percent( $now ) . '%" aria-hidden="true"></span>'
 		. '</div></div></section>'
-		. '<script>(function (scroller) { var live = scroller && scroller.querySelector(".station-guide__programme--live"); if (live) scroller.scrollLeft = live.offsetLeft - 16; })(document.currentScript.previousElementSibling.querySelector(".station-guide__scroll"));</script>';
+		. '<script>(function (scroller) { var live = scroller && scroller.querySelector(".station-guide__programme--live"); if (live) scroller.scrollLeft = live.offsetLeft - 16; })(document.querySelector(".station-guide__scroll"));</script>';
 }
 
 function empyrian_radio_guide_styles() {
