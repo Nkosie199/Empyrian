@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Mynger Integration (Empyrian)
  * Description: Moves audio/video uploads to the uploader's Mynger S3 storage and removes them from S3 when their post is deleted.
- * Version: 1.1.1
+ * Version: 1.1.2
  */
 
 defined('ABSPATH') || exit;
@@ -118,7 +118,7 @@ function mynger_require_storage_room(array $file): array {
         return $file;
     }
     $d    = mynger_get_user_data(get_current_user_id());
-    $left = $d ? mynger_storage_left_bytes($d['userId']) : null;
+    $left = $d ? mynger_storage_left_bytes($d) : null;
     if ($left !== null && (int) $file['size'] > $left) {
         $file['error'] = sprintf('Not enough Mynger storage: %s left. Free up space in WebDocs, then try again.', size_format($left));
     }
@@ -129,14 +129,17 @@ function mynger_is_media(string $mime): bool {
     return str_starts_with($mime, 'video/') || str_starts_with($mime, 'audio/');
 }
 
-function mynger_storage_left_bytes(string $user_id): ?int {
-    $limit = mynger_storage_megabytes('limit', $user_id);
-    $used  = mynger_storage_megabytes('size', $user_id);
+function mynger_storage_left_bytes(array $d): ?int {
+    $limit = mynger_storage_megabytes('limit', $d);
+    $used  = mynger_storage_megabytes('size', $d);
     return $limit === null || $used === null ? null : (int) max(0, ($limit - $used) * MB_IN_BYTES);
 }
 
-function mynger_storage_megabytes(string $measure, string $user_id): ?float {
-    $r = wp_remote_get(MYNGER_API_BASE . '/api/storage/' . $measure . '/' . rawurlencode($user_id), ['timeout' => 10]);
+function mynger_storage_megabytes(string $measure, array $d): ?float {
+    $r = wp_remote_get(MYNGER_API_BASE . '/api/storage/' . $measure . '/' . rawurlencode($d['userId']), [
+        'headers' => ['Authorization' => 'Bearer ' . $d['token']],
+        'timeout' => 10,
+    ]);
     if (is_wp_error($r) || wp_remote_retrieve_response_code($r) !== 200) {
         return null;
     }
