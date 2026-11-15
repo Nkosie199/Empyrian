@@ -48,8 +48,8 @@ function empyrian_radio_render_embed( $dark ) {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title><?php echo esc_html( EMPYRIAN_RADIO_NAME ); ?></title>
 <style>
-:root { --bg: #ffffff; --fg: #1f1b3a; --muted: #5b5778; --accent: #605ed7; --accent-fg: #ffffff; --chip: #f59e0b; --line: #e7e5f5; --pad: 1rem; }
-[data-theme="dark"] { --bg: #14122b; --fg: #f4f3ff; --muted: #b9b6d9; --accent: #a9a7f0; --accent-fg: #14122b; --line: #2c2950; }
+:root { --bg: #ffffff; --fg: #1f1b3a; --muted: #5b5778; --accent: #7C3AED; --accent-fg: #ffffff; --chip: #f59e0b; --line: #e7e5f5; --pad: 1rem; }
+[data-theme="dark"] { --bg: #14122b; --fg: #f4f3ff; --muted: #b9b6d9; --accent: #7C3AED; --accent-fg: #ffffff; --link: #A78BFA; --line: #2c2950; }
 * { box-sizing: border-box; }
 html, body { margin: 0; background: var(--bg); color: var(--fg); font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
 /* Once the framing page sizes this to fit, a scrollbar would only fight that sizing. */
@@ -71,7 +71,7 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 3px solid 
 label.volume { display: flex; gap: 0.4rem; align-items: center; color: var(--muted); font-size: 0.85rem; }
 .next { color: var(--muted); font-size: 0.9rem; margin: 0.2rem 0 0; }
 .next strong { color: var(--fg); }
-a { color: var(--accent); }
+a { color: var(--link, var(--accent)); }
 .status { color: var(--muted); font-size: 0.85rem; min-height: 1.2em; margin: 0; }
 </style>
 </head>

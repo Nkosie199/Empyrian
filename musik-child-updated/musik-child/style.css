@@ -5,6 +5,37 @@ Template:       muzik
 Tags: 			custom-colors, editor-style, featured-images, translation-ready
 */
 
+/* Brand colours: Ringer's Empyrian palette (BC-8): purple primary, amber secondary, pink tertiary.
+   html:root outranks the Customizer's inline :root colour and Muzik's theme.css. --color-primary is a
+   fill under white text (5.7:1) in both schemes; brand-coloured text uses --color-primary-ink. */
+html:root {
+	--color-primary: #7C3AED;
+	--color-primary-ink: #7C3AED;
+	--color-secondary: #A16207;
+	--color-tertiary: #DB2777;
+}
+html.dark {
+	--color-primary-ink: #A78BFA;
+	--color-secondary: #FACC15;
+	--color-tertiary: #F472B6;
+}
+html.light body {
+	--body-bg-color: #F5F6FA;
+}
+html.dark body {
+	--body-bg-color: #050608;
+}
+html.dark .button-primary, html.dark input.button-primary, html.dark .btn-follow, html.dark .btn-like.active,
+html.dark .album-track.active .icon-play, html.dark .user-navigation a span,
+html.dark input[type="checkbox"]:checked, html.dark input[type="radio"]:checked,
+html.dark .mobile-menu li.current_page_item > a, html.dark .mobile-menu li.current-menu-item > a {
+	color: var(--color-primary-ink);
+}
+html.dark .btn-like.active svg, html.dark [data-plyr="like"] .icon--pressed {
+	stroke: var(--color-primary-ink);
+	fill: var(--color-primary-ink);
+}
+
 /* QA fix: song list rows (Charts, track lists) had zero gap between the
    title and artist name — they visually touched. Scoped to .block-loop-item
    only, not entry-title globally, since blog post cards elsewhere may rely
