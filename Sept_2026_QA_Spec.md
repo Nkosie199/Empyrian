@@ -59,6 +59,8 @@ The same data feeds Hub Cards (`GET /wp-json/empyrian/v1/hub/cards`, H-2 shape) 
 
 **Acceptance:** a signed-out visitor sees Radio, Charts and New releases with no empty sections; a signed-in user sees Continue listening after playing one track; every Play on the page works (E-1 check).
 
+**Built (22 Nov):** `plugins/empyrian-home-hub` (branch `feature/home-hub`), tested on the local copy (`tools/wp-local`); not deployed yet. Radio is Empyrian Radio's own player: it plays every public track, Mynger stations synced to Empyrian included, since mynger-backend's station list needs a signed-in caller. Deploy and rollback: the plugin's README.
+
 ## 3. Done live (26–27 Sep)
 
 - Mobile bottom bar: centre **Upload** button (`icon-upload hide-text btn-link` → `/upload/`), matching Bonakude.

@@ -1,0 +1,34 @@
+{
+  "$schema": "https://playground.wordpress.net/blueprint-schema.json",
+  "preferredVersions": {
+    "php": "8.3",
+    "wp": "latest"
+  },
+  "constants": {
+    "WP_DEBUG": true,
+    "WP_DEBUG_LOG": true,
+    "WP_DEBUG_DISPLAY": false
+  },
+  "steps": [
+    {
+      "step": "activatePlugin",
+      "pluginPath": "empyrian-hub-fixtures/empyrian-hub-fixtures.php"
+    },
+    {
+      "step": "runPHP",
+      "code": "<?php require '/wordpress/wp-load.php'; empyrian_hub_fixtures_seed();"
+    },
+    {
+      "step": "activateTheme",
+      "themeFolderName": "musik-child"
+    },
+    {
+      "step": "activatePlugin",
+      "pluginPath": "empyrian-home-hub/empyrian-home-hub.php"
+    },
+    {
+      "step": "runPHP",
+      "code": "<?php require '/wordpress/wp-load.php'; flush_rewrite_rules();"
+    }
+  ]
+}
