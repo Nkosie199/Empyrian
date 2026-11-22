@@ -1,0 +1,196 @@
+.empyrian-hub {
+	display: flex;
+	flex-direction: column;
+	gap: 2.5rem;
+}
+
+.empyrian-hub__head {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 1rem;
+	margin-bottom: 1rem;
+}
+
+.empyrian-hub__head h2 {
+	margin: 0;
+	font-size: 1.25rem;
+}
+
+.empyrian-hub__all {
+	flex-shrink: 0;
+	padding: 0.75rem 0;
+	color: var(--color-primary-ink, var(--color-primary));
+	font-weight: 600;
+}
+
+.empyrian-hub__grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));
+	gap: 1.5rem 1rem;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.empyrian-hub__item {
+	display: flex;
+	flex-direction: column;
+	gap: 0.2rem;
+	min-width: 0;
+}
+
+.empyrian-hub__section--charts .empyrian-hub__grid {
+	counter-reset: empyrian-hub-rank;
+}
+
+.empyrian-hub__section--charts .empyrian-hub__title::before {
+	counter-increment: empyrian-hub-rank;
+	content: counter(empyrian-hub-rank) ". ";
+	opacity: 0.7;
+}
+
+.empyrian-hub__cover {
+	position: relative;
+	margin-bottom: 0.4rem;
+}
+
+.empyrian-hub__art {
+	display: block;
+	aspect-ratio: 1;
+	overflow: hidden;
+	border-radius: 0.5rem;
+	background: rgba(127, 127, 127, 0.15);
+}
+
+.empyrian-hub__art img,
+.empyrian-hub__placeholder {
+	display: block;
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+}
+
+.empyrian-hub__placeholder {
+	background: linear-gradient(135deg, var(--color-primary, #7c3aed), var(--color-tertiary, #db2777));
+}
+
+.empyrian-hub__play.btn-play {
+	position: absolute;
+	right: 0.5rem;
+	bottom: 0.5rem;
+	display: grid;
+	place-items: center;
+	width: 2.75rem;
+	height: 2.75rem;
+	min-width: 2.75rem;
+	padding: 0;
+	border: 0;
+	border-radius: 50%;
+	background: var(--color-primary, #7c3aed);
+	color: #fff;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+	cursor: pointer;
+}
+
+.empyrian-hub__play.btn-play > span {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	clip: rect(0 0 0 0);
+	white-space: nowrap;
+}
+
+.empyrian-hub__play.btn-play::before {
+	content: "";
+	margin-left: 0.2rem;
+	border-style: solid;
+	border-width: 0.5rem 0 0.5rem 0.8rem;
+	border-color: transparent transparent transparent currentColor;
+}
+
+.empyrian-hub__item.active .empyrian-hub__play.btn-play::before {
+	width: 0.75rem;
+	height: 1rem;
+	margin-left: 0;
+	border-width: 0 0.25rem;
+	border-color: currentColor;
+}
+
+.empyrian-hub__play.btn-play:focus-visible,
+.empyrian-hub a.empyrian-hub__upload-button:focus-visible {
+	outline: 3px solid var(--color-secondary, #a16207);
+	outline-offset: 2px;
+}
+
+.empyrian-hub__title,
+.empyrian-hub__meta {
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+
+.empyrian-hub__title {
+	color: inherit;
+	font-weight: 600;
+}
+
+.empyrian-hub__meta {
+	font-size: 0.85rem;
+	opacity: 0.75;
+}
+
+.empyrian-hub__resume {
+	display: block;
+	color: var(--color-primary-ink, var(--color-primary));
+	opacity: 1;
+}
+
+.empyrian-hub__on-air {
+	margin: 0 0 0.75rem;
+}
+
+.empyrian-hub__radio-player {
+	display: block;
+	width: 100%;
+	height: 16rem;
+	border: 0;
+}
+
+.empyrian-hub__upload {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1rem 2rem;
+	padding: 1.5rem;
+	border-radius: 0.75rem;
+	background: rgba(124, 58, 237, 0.12);
+}
+
+.empyrian-hub__upload h2 {
+	margin: 0 0 0.25rem;
+	font-size: 1.25rem;
+}
+
+.empyrian-hub__upload p {
+	margin: 0;
+}
+
+.empyrian-hub a.empyrian-hub__upload-button {
+	display: inline-flex;
+	align-items: center;
+	min-height: 2.75rem;
+	padding: 0 1.25rem;
+	border-radius: 999px;
+	background: var(--color-primary, #7c3aed);
+	color: #fff;
+	font-weight: 600;
+}
+
+@media (max-width: 480px) {
+	.empyrian-hub__grid {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+}
