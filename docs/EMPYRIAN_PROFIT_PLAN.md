@@ -15,32 +15,41 @@ uploads into each user's own Mynger S3 folder (`plugins/mynger-integration`), 14
 "manual" Store Gateway, which records orders without taking money, and no track has a price yet.
 No CI.
 
-## Group money rules (Board, 2026-10-26)
+## Group money rules (Board, 2026-10-26; updated by the owner, 2026-11-16)
 
 1. Every app must be profitable on its own costs, as if it ran alone.
-2. The 10% withdrawal fee belongs to the app that made the sale.
-3. Every revenue generator has its own entry in OpenBank's money-movement table.
-4. All money moves through BlockBank/OpenBank. Users spend only COA inside the apps.
+2. Every sale between users pays a **10% platform fee at the point of sale** (owner, 2026-11-15): 9 points are the
+   selling app's revenue and 1 point is myWallet's, for running the wallet every sale is paid from. The seller gets
+   90% as Mynger credit. Withdrawals are off for good, so nothing is earned "at withdrawal".
+3. Every revenue generator has its own entry in OpenBank's money-movement table, so revenue is traceable per app and
+   never counted twice.
+4. Users pay in Mynger credit, shown in rand (R1 of credit per R1 paid), bought on myWallet (the product formerly
+   called BlockBank). Credit is never cash and is never sent between users: it only buys what Mynger lists
+   (OpenBank `specs/PAYMENT_LEGAL_REVIEW.md`, section 10).
+5. myWallet/OpenBank supports app subscription models.
 
 ## Revenue model (approved)
 
 | Generator | Movement | How Empyrian earns |
 |---|---|---|
-| Track and album sales through EDD | `empyrian/TRACK_PURCHASE` | 10% when artists withdraw; artists keep 100% |
-| Tips to artists | `empyrian/DONATION` | 10% when artists withdraw |
+| Track and album sales through EDD | `empyrian/TRACK_PURCHASE` | Platform fee at the point of sale (9 points Empyrian's, 1 myWallet's); artists get 90% as credit |
 
-How a purchase works: a signed-in listener buys a track priced in COA through EDD's normal cart. At
-checkout they choose **Pay with COA**, a payment method in our own plugin. The plugin asks OpenBank
-to move the COA from buyer to artist, tagged `empyrian/TRACK_PURCHASE`. On success, EDD completes the
-order and unlocks the download. Without enough COA, the buyer gets a "Top up on BlockBank" button.
-Tips use the same path, tagged `empyrian/DONATION`.
+Tips are dropped (owner, 2026-11-15): a fan who wants to give more can buy the artist's Support on Mynger.
+**Platform fee:** 10% of every sale at the point of sale, the app's 9 points and myWallet's 1 (OpenBank
+`specs/PLATFORM_FEE.md`, built on `feature/platform-fee`).
+
+How a purchase works: a signed-in listener buys a track priced in rand through EDD's normal cart. At
+checkout they choose **Pay with Mynger credit**, a payment method in our own plugin. The plugin asks OpenBank
+to sell it as Mynger: the buyer pays in credit and the artist gets 90%, tagged `empyrian/TRACK_PURCHASE`. On
+success, EDD completes the
+order and unlocks the download. Without enough credit, the buyer gets a "Top up on myWallet" button.
 
 Dropped from the draft: storage tiers (storage belongs to WebDocs).
 
 ## The draft's asks (answered)
 
 1. **Profit date:** 2027-12-31. Start: 2027-01-01.
-2. **Payments:** BlockBank/OpenBank is the rail (group rule 4).
+2. **Payments:** myWallet/OpenBank is the rail (group rule 4).
 3. **Storage:** audio stays on Mynger S3 (pennies today); no chargeback needed.
 
 ## Costs (resolved 2026-10-26)
@@ -55,7 +64,7 @@ Dropped from the draft: storage tiers (storage belongs to WebDocs).
 The Musik theme was a one-off R1,191 (2024). The Dec 2025 Hostinger renewal is missing from the 2025
 financial statement and should be recorded.
 
-**Break-even:** about R5,200/month of artist income withdrawn.
+**Break-even:** about R5,800/month of track sales (Empyrian's 9%).
 
 ## Timeline
 
@@ -78,20 +87,19 @@ back to back. Dates are re-baselined as work lands.
 | Dates | Work | Days |
 |---|---|---|
 | Jan 1–3 | Task 171: listener home hub | 3 |
-| Jan 4–6 | "Pay with COA" EDD payment method in our plugin | 3 |
-| Jan 7–8 | `empyrian/TRACK_PURCHASE` movement and catalogue row | 2 |
-| Jan 9–10 | Tips (`empyrian/DONATION`) | 2 |
-| Jan 11–12 | Artist earnings view with "Withdraw on BlockBank" | 2 |
+| Jan 4–6 | "Pay with Mynger credit" EDD payment method in our plugin | 3 |
+| Jan 7–8 | `empyrian/TRACK_PURCHASE` movement, catalogue row and OpenBank sale kind | 2 |
+| Jan 9–10 | Artist earnings view: credit earned after the platform fee | 2 |
 
 Mynger Radio (task 491) already shipped on 2026-10-18 and is live at `/radio`.
 
 WordPress rules apply: our own plugin only (never Musik, Play Block or EDD files), tested on the
 local Docker copy on every hook, with a backup and a Hostinger File Manager/SFTP rollback before any
-production change. Sales go public with BlockBank's public-money launch (2027-03-01).
+production change. Sales go public with myWallet's public-money launch (2027-03-01).
 
 ## Marketing (cash budget R0)
 
-Recruit independent South African artists to sell directly ("keep 100%"), seed the catalogue first,
+Recruit independent South African artists to sell directly ("keep 90%"), seed the catalogue first,
 and use Mynger Radio on Mynger Home as the discovery channel. No referral codes.
 
 ## Risks carried forward
@@ -99,5 +107,5 @@ and use Mynger Radio on Mynger Home as the discovery channel. No referral codes.
 - Music rights and takedowns: a terms clause and a takedown form.
 - An empty catalogue: seed content before sales.
 - Hostinger's limits under real traffic.
-- BlockBank's public-money launch gates sales.
+- myWallet's public-money launch gates sales.
 - One agent: any blocked ticket delays every ticket after it.
